@@ -28,7 +28,7 @@ from PyPDF2 import PdfMerger
 main = Blueprint('main', __name__)
 
 # Set the upload folder path
-UPLOAD_FOLDER = "C:/Users/Rama/flaskDatamile/project/hse_storage"
+UPLOAD_FOLDER = "./project/hse_storage"
 
 def get_server_info():
     hostname = socket.gethostname()
