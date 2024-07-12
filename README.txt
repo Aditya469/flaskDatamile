@@ -1,3 +1,7 @@
+0. Git clone the repository with the following command
+
+git clone https://github.com/Aditya469/flaskDatamile
+
 1. To overwrite an existing requirements.txt file, use the --force option:
 
 pipreqs . --force
