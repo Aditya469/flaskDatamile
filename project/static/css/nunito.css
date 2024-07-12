@@ -1,0 +1,21 @@
+/* Nunito Regular */
+@font-face {
+    font-family: 'Nunito';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../fonts/nunito/Nunito-Regular.ttf') format('truetype');
+}
+
+/* Nunito Italic */
+@font-face {
+    font-family: 'Nunito';
+    font-style: italic;
+    font-weight: 400;
+    src: url('../fonts/nunito/Nunito-Italic.ttf') format('truetype');
+}
+
+body {
+    font-family: 'Nunito', sans-serif;
+}
+
+/* Add more @font-face rules for other weights and styles */
