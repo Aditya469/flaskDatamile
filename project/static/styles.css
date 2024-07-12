@@ -1,0 +1,29 @@
+/* static/styles.css */
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  
+  th {
+    background-color: darkblue !important;
+    color: white !important;
+    font-weight: bold;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  td {
+    padding: 8px;
+  }
+  
+  .highlight {
+    background-color: lightblue !important;
+    font-weight: bold;
+  }
+
+  .cancelled_highlight {
+    background-color: lightgray !important;
+    font-weight: bold;
+  }
+  

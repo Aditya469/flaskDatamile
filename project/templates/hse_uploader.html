@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">HSE Uploader</h1>
+</div>
+<hr>
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Select HSE Files</h6>
+    </div>
+    <br>
+    <div class="card-body">
+        <div id="message-container"></div>
+        <form id="hse-form" action="{{ url_for('main.hse_uploader') }}" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <input type="file" class="form-control-file" id="hse_files" name="hse_files" multiple accept=".hse">
+            </div>
+            <button type="submit" class="btn btn-primary">Process HSE</button>
+        </form>
+    </div>
+</div>
+<br>
+<hr>
+<br>
+<div id="databaseClearBtn">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Clear Database</h6>
+        </div>
+
+        <div class="card-body">
+        <!-- Add the new button here -->
+        <p>To Clear Database Last Week's Sales Orders, Picklists, Cancelled Lists, and Sales Forecasts press the following button!</p>
+        <button id="clearDataBtn" class="btn btn-danger mt-3">Clear Current App Data</button>
+        <div id="result"></div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#hse-form').submit(function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+            var messageContainer = $('#message-container');
+            messageContainer.empty();
+            var loadingMessage = $('<div>').addClass('alert').addClass('alert-info').text('Processing files... Please wait.');
+            messageContainer.append(loadingMessage);
+            
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    messageContainer.empty();
+                    var messageClass = response.status === 'success' ? 'alert-success' : 'alert-info';
+                    var messageElement = $('<div>').addClass('alert').addClass(messageClass).text(response.message);
+                    messageContainer.append(messageElement);
+                    if (response.processed_files) {
+                        var processedFilesElement = $('<ul>');
+                        response.processed_files.forEach(function(file) {
+                            processedFilesElement.append($('<li>').text(file));
+                        });
+                        messageContainer.append($('<p>').text('Processed files:'));
+                        messageContainer.append(processedFilesElement);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    messageContainer.empty();
+                    var errorMessage = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'An error occurred while processing the files. Please try different HSE Files.';
+                    var messageElement = $('<div>').addClass('alert').addClass('alert-danger').text(errorMessage);
+                    messageContainer.append(messageElement);
+                }
+            });
+        });
+        // Add event listener for the new button
+        document.getElementById('clearDataBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all current app data? This action cannot be undone.')) {
+                fetch('/clear_app_data', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while clearing the data.');
+                    });
+            }
+        });
+    });
+</script>
+{% endblock %}

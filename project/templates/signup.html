@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="column is-4 is-offset-4">
+    <h3 class="title">Create New User Account</h3>
+    <div class="box">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="notification is-danger">
+                {{ messages[0] }}. Go to <a href="{{ url_for('auth.login') }}">login page</a>.
+            </div>
+        {% endif %}
+        {% endwith %}
+        <hr>
+        <div id="createNewUserAccountForm">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Add a New User:</h6>
+                </div>
+                <div class="card mb-0">
+                    <p class="m-0 form-control text-gray-800">Enter email, username, and password to create account</p>
+                </div>
+                <div class="card-body">
+                    <div class="signup">
+                        <form method="POST" action="/signup" autocomplete="off">
+                            <input type="text" style="display:none" autocomplete="false">
+                            <div class="form-group">
+                                <div class="field">
+                                    <div class="control">
+                                        <input class="input is-large" type="text" name="fakeusernameremembered" style="display:none;">
+                                        <input class="input is-large" type="email" name="email" placeholder="Email" autocomplete="new-password">
+                                    </div>
+                                </div>
+                    
+                                <div class="field">
+                                    <div class="control">
+                                        <input class="input is-large" type="text" name="name" placeholder="Name" autocomplete="new-password">
+                                    </div>
+                                </div>
+                    
+                                <div class="field">
+                                    <div class="control">
+                                        <input class="input is-large" type="password" name="fakepasswordremembered" style="display:none;">
+                                        <input class="input is-large" type="password" name="password" placeholder="Password" autocomplete="new-password">
+                                    </div>
+                                </div>
+                                <br>
+                                <button class="button is-block is-info is-large is-fullwidth">Create Account</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Disable autofill on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        var inputs = document.querySelectorAll('input');
+        inputs.forEach(function(input) {
+            input.setAttribute('autocomplete', 'new-password');
+            input.setAttribute('data-original-name', input.name);
+            input.name = Math.random().toString(36).substring(2, 15);
+        });
+
+        document.querySelector('form').addEventListener('submit', function() {
+            inputs.forEach(function(input) {
+                input.name = input.getAttribute('data-original-name');
+            });
+        });
+    });
+</script>
+
+{% endblock %}

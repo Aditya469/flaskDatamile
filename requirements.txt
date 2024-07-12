@@ -1,0 +1,12 @@
+alembic==1.13.1
+Flask==3.0.3
+Flask_Login==0.6.3
+Flask_Migrate==4.0.7
+Flask_Script==2.0.6
+flask_sqlalchemy==3.1.1
+mysql_connector_repackaged==0.3.1
+pandas==2.2.2
+PyPDF2==3.0.1
+reportlab==4.2.2
+SQLAlchemy==2.0.29
+Werkzeug==3.0.3

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Welcome to DataMile Application</h1>
+</div>
+<hr>
+<div class="mb-4 d-flex">
+    <div class="mr-2">
+        <button id="picklistBtn" class="btn btn-primary" onclick="showTable('picklist')">Picklist</button>
+        <button id="cancelledListBtn" class="btn btn-secondary" onclick="showTable('cancelled_list')">Cancelled List</button>
+    </div>
+</div>
+
+<div class="mb-4 d-flex">
+    <div class="mr-2">
+        <label for="accountFilter">Filter by Account ID:</label>
+        <select id="accountFilter" class="form-control" style="width: 200px;" size="5">
+            <option value="" selected>All</option>
+            {% for account_id in account_ids|sort %}
+            <option value="{{ account_id }}">{{ account_id }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mr-2">
+        <label for="weekFilter">Filter by Week:</label>
+        <select id="weekFilter" class="form-control" style="width: 200px;" size="5">
+            <option value="" selected>All</option>
+            {% for week in weeks|sort %}
+            <option value="{{ week }}">{{ week }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="dateFilter">Filter by Required Date:</label>
+        <select id="dateFilter" class="form-control" style="width: 200px;" size="5">
+            <option value="" selected>All</option>
+            {% for date in required_dates %}
+            <option value="{{ date }}">{{ date }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+
+<div id="picklistTableContainer">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Picklist</h6>
+        </div>
+
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="picklistTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Account ID</th>
+                            <th>Stock Code</th>
+                            <th>Issue</th>
+                            <th>Required Date</th>
+                            <th>Required Day</th>
+                            <th>Required Quantity</th>
+                            <th>Order Reference</th>
+                            <th>Location</th>
+                            <th>Message</th>
+                            <th>Week</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in picklist_items %}
+                        <tr>
+                            <td>{{ item.account_id }}</td>
+                            <td class="highlight">{{ item.stock_code }}</td>
+                            <td>{{ item.issue }}</td>
+                            <td>{{ item.required_date.strftime('%d-%m-%Y') }}</td>
+                            <td>{{ item.required_day }}</td>
+                            <td class="highlight">{{ item.required_quantity }}</td>
+                            <td>{{ item.order_reference }}</td>
+                            <td>{{ item.location }}</td>
+                            <td>{{ item.message }}</td>
+                            <td>{{ item.week }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div>
+                    <a href="{{ url_for('main.generate_picklist_pdf') }}" class="btn btn-primary mt-3">Get Picklist PDF</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="cancelledListTableContainer" style="display: none;">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Cancelled List</h6>
+        </div>
+      
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="cancelledListTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Account ID</th>
+                            <th>Stock Code</th>
+                            <th>Issue</th>
+                            <th>Required Date</th>
+                            <th>Required Day</th>
+                            <th>Required Quantity</th>
+                            <th>Order Reference</th>
+                            <th>Location</th>
+                            <th>Message</th>
+                            <th>Week</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cancelled_items %}
+                        <tr>
+                            <td>{{ item.account_id }}</td>
+                            <td class="cancelled_highlight">{{ item.stock_code }}</td>
+                            <td>{{ item.issue }}</td>
+                            <td>{{ item.required_date.strftime('%d-%m-%Y') }}</td>
+                            <td>{{ item.required_day }}</td>
+                            <td class="cancelled_highlight">{{ item.required_quantity }}</td>
+                            <td>{{ item.order_reference }}</td>
+                            <td>{{ item.location }}</td>
+                            <td>{{ item.message }}</td>
+                            <td>{{ item.week }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div>
+                    <a href="{{ url_for('main.generate_cancelled_list_pdf') }}" class="btn btn-primary">Get Cancelled List PDF</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let picklistTable, cancelledListTable;
+
+    function showTable(tableId) {
+        var picklistTableContainer = document.getElementById('picklistTableContainer');
+        var cancelledListTableContainer = document.getElementById('cancelledListTableContainer');
+        var picklistBtn = document.getElementById('picklistBtn');
+        var cancelledListBtn = document.getElementById('cancelledListBtn');
+        
+        if (tableId === 'picklist') {
+            picklistTableContainer.style.display = 'block';
+            cancelledListTableContainer.style.display = 'none';
+            picklistBtn.classList.remove('btn-secondary');
+            picklistBtn.classList.add('btn-primary');
+            cancelledListBtn.classList.remove('btn-primary');
+            cancelledListBtn.classList.add('btn-secondary');
+        } else {
+            picklistTableContainer.style.display = 'none';
+            cancelledListTableContainer.style.display = 'block';
+            picklistBtn.classList.remove('btn-primary');
+            picklistBtn.classList.add('btn-secondary');
+            cancelledListBtn.classList.remove('btn-secondary');
+            cancelledListBtn.classList.add('btn-primary');
+        }
+
+        // Adjust DataTables columns
+        if (tableId === 'picklist' && picklistTable) {
+            picklistTable.columns.adjust().draw();
+        } else if (cancelledListTable) {
+            cancelledListTable.columns.adjust().draw();
+        }
+    }
+
+    function applyFilters() {
+        var accountFilter = $('#accountFilter').val();
+        var weekFilter = $('#weekFilter').val();
+        var dateFilter = $('#dateFilter').val();
+
+        $.fn.dataTable.ext.search.push(
+            function(settings, data, dataIndex) {
+                var accountMatch = accountFilter === "" || data[0] === accountFilter;
+                var weekMatch = weekFilter === "" || data[8] === weekFilter;
+                var dateMatch = dateFilter === "" || data[3] === dateFilter;
+                return accountMatch && weekMatch && dateMatch;
+            }
+        );
+
+        picklistTable.draw();
+        cancelledListTable.draw();
+
+        // Clear custom filter function
+        $.fn.dataTable.ext.search.pop();
+    }
+
+    $(document).ready(function() {
+        picklistTable = $('#picklistTable').DataTable({
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            "pageLength": 10,
+            "dom": '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip',
+            "language": {
+                "lengthMenu": "Show _MENU_ entries",
+                "search": "Search:",
+                "info": "Showing _START_ to _END_ of _TOTAL_ entries"
+            },
+            "order": [] // This will disable initial sorting
+        });
+
+        cancelledListTable = $('#cancelledListTable').DataTable({
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            "pageLength": 10,
+            "dom": '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip',
+            "language": {
+                "lengthMenu": "Show _MENU_ entries",
+                "search": "Search:",
+                "info": "Showing _START_ to _END_ of _TOTAL_ entries"
+            },
+            "order": [] // This will disable initial sorting
+        });
+
+        // Add event listener to filter dropdowns
+        $('#accountFilter, #weekFilter, #dateFilter').on('change', applyFilters);
+
+        // Initial table display
+        showTable('picklist');
+    });
+    document.getElementById('generatePdfBtn').addEventListener('click', function() {
+        fetch('{{ url_for("main.generate_picklist_pdf") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                } else {
+                    alert('Error generating PDFs');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while generating PDFs');
+            });
+    });
+</script>
+{% endblock %}

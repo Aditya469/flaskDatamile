@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-2 text-gray-800">Sales Forecasts</h1>
+    <hr>
+    <!-- Weekly Forecasts -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Weekly Forecasts</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="weeklyForecastTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr class="table-header">
+                        <th class="account-column">Account</th>
+                        {% if weekly_page == 1 %}
+                            <th>Arrears</th>
+                        {% endif %}
+                        {% for week in week_columns %}
+                            <th>{{ week }}</th>
+                        {% endfor %}
+                        <th class="total-column">Total</th>
+                        <th class="grand-total-column">Grand Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for forecast in weekly_forecasts %}
+                    <tr class="{% if forecast.Account == 'Total' %}total-row{% else %}data-row{% endif %}">
+                        <td class="account-column">{{ forecast.Account }}</td>
+                        {% if weekly_page == 1 %}
+                            <td>{{ "£%.2f"|format(forecast['Arrears']|float) }}</td>
+                        {% endif %}
+                        {% for week in week_columns %}
+                            <td>{{ "£%.2f"|format(forecast[week]|float) }}</td>
+                        {% endfor %}
+                        <td class="total-column">{{ "£%.2f"|format(forecast['Total']|float) }}</td>
+                        <td class="grand-total-column">{{ "£%.2f"|format(forecast['Grand Total']|float) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Button for the Weekly Forecasts -->
+        <br>
+        <div>
+            <a href="{{ url_for('main.generate_weekly_forecast_pdf') }}" class="btn btn-primary">Generate Weekly Forecast PDF</a>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                Showing {{ (weekly_page - 1) * weeks_per_page + 1 }} to 
+                {% if weekly_page * weeks_per_page > total_weeks %}
+                    {{ total_weeks }}
+                {% else %}
+                    {{ weekly_page * weeks_per_page }}
+                {% endif %}
+                of {{ total_weeks }} weeks
+            </div>
+            <!-- Weekly Forecasts Pagination -->
+            <nav aria-label="Weekly Page Navigation">
+                <ul class="pagination">
+                    {% if weekly_page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.sales_forecasts', weekly_page=weekly_page-1, monthly_page=monthly_page) }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% set start = weekly_page - 2 if weekly_page > 2 else 1 %}
+                    {% set end = start + 4 if start + 4 < total_weekly_pages else total_weekly_pages %}
+                    {% set start = end - 4 if end - start < 4 and end - 4 > 0 else start %}
+                    
+                    {% for p in range(start, end + 1) %}
+                        <li class="page-item {% if p == weekly_page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('main.sales_forecasts', weekly_page=p, monthly_page=monthly_page) }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                    
+                    {% if weekly_page < total_weekly_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.sales_forecasts', weekly_page=weekly_page+1, monthly_page=monthly_page) }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Forecasts -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Monthly Forecasts</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="monthlyForecastTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr class="table-header">
+                        <th class="account-column">Account</th>
+                        {% if monthly_page == 1 %}
+                            <th>Arrears</th>
+                        {% endif %}
+                        {% for month in month_columns %}
+                            <th>{{ month }}</th>
+                        {% endfor %}
+                        <th class="total-column">Total</th>
+                        <th class="grand-total-column">Grand Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for forecast in monthly_forecasts %}
+                    <tr class="{% if forecast.Account == 'Total' %}total-row{% else %}data-row{% endif %}">
+                        <td class="account-column">{{ forecast.Account }}</td>
+                        {% if monthly_page == 1 %}
+                            <td>{{ "£%.2f"|format(forecast['Arrears']|float) }}</td>
+                        {% endif %}
+                        {% for month in month_columns %}
+                            <td>{{ "£%.2f"|format(forecast[month]|float) }}</td>
+                        {% endfor %}
+                        <td class="total-column">{{ "£%.2f"|format(forecast['Total']|float) }}</td>
+                        <td class="grand-total-column">{{ "£%.2f"|format(forecast['Grand Total']|float) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Button for the Monthly Forecasts -->
+        <br>
+        <div>
+            <a href="{{ url_for('main.generate_monthly_forecast_pdf') }}" class="btn btn-primary">Generate Monthly Forecast PDF</a>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+                Showing {{ (monthly_page - 1) * months_per_page + 1 }} to 
+                {% if monthly_page * months_per_page > total_months %}
+                    {{ total_months }}
+                {% else %}
+                    {{ monthly_page * months_per_page }}
+                {% endif %}
+                of {{ total_months }} months
+            </div>
+            <!-- Monthly Forecasts Pagination -->
+            <nav aria-label="Monthly Page Navigation">
+                <ul class="pagination">
+                    {% if monthly_page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.sales_forecasts', weekly_page=weekly_page, monthly_page=monthly_page-1) }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% set start = monthly_page - 2 if monthly_page > 2 else 1 %}
+                    {% set end = start + 4 if start + 4 < total_monthly_pages else total_monthly_pages %}
+                    {% set start = end - 4 if end - start < 4 and end - 4 > 0 else start %}
+                    
+                    {% for p in range(start, end + 1) %}
+                        <li class="page-item {% if p == monthly_page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('main.sales_forecasts', weekly_page=weekly_page, monthly_page=p) }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                    
+                    {% if monthly_page < total_monthly_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.sales_forecasts', weekly_page=weekly_page, monthly_page=monthly_page+1) }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-header {
+        background-color: #00008B;
+        color: white;
+    }
+    .account-column {
+        background-color: #00008B !important;
+        color: white !important;
+        font-weight: bold;
+    }
+    .total-column {
+        background-color: #FFFFE0 !important;
+        color: black !important;
+        font-weight: bold;
+    }
+    .grand-total-column {
+        background-color: #90EE90 !important;
+        color: black !important;
+        font-weight: bold;
+    }
+    .total-row {
+        background-color: #FFFFE0 !important;
+        font-weight: bold;
+    }
+    .data-row {
+        background-color: #E6F3FF;
+    }
+    th.total-column, td.total-column {
+        background-color: #FFFFE0 !important;
+    }
+    th.grand-total-column, td.grand-total-column {
+        background-color: #90EE90 !important;
+    }
+    th.account-column, td.account-column {
+        background-color: #00008B !important;
+        color: white !important;
+    }
+</style>
+
+<script>
+    $(document).ready(function() {
+        $('#weeklyForecastTable').DataTable({
+            "paging": false,
+            "searching": false,
+            "info": false,
+            "order": [[ 0, "asc" ]]
+        });
+        $('#monthlyForecastTable').DataTable({
+            "paging": false,
+            "searching": false,
+            "info": false,
+            "order": [[ 0, "asc" ]]
+        });
+    });
+
+    document.getElementById('generateWeeklyPDF').addEventListener('click', function() {
+    window.location.href = "{{ url_for('main.generate_weekly_forecast_pdf') }}";
+});
+</script>
+{% endblock %}

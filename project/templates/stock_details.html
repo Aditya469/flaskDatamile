@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Stock Details</h1>
+</div>
+<hr>
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Stock Price Information</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="stockDetailsTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Stock Code</th>
+                        <th>Unit Price</th>
+                        <th>Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stock_prices %}
+                    <tr>
+                        <td>{{ stock.stock_code }}</td>
+                        <td>£{{ stock.unit_price }}</td>
+                        <td>{{ stock.last_updated.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+        <div class="alert alert-dismissible fade show
+                    {% if category == 'success' %}alert-success
+                    {% elif category == 'error' %}alert-danger
+                    {% elif category == 'warning' %}alert-warning
+                    {% else %}alert-info{% endif %}" 
+             role="alert">
+          {{ message }}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Update Single Stock Price</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.stock_details') }}">
+                    <input type="text" name="stock_code" placeholder="Stock Code" required>
+                    <input type="number" step="0.01" name="unit_price" placeholder="Unit Price" required>
+                    <button type="submit">Update Price</button>
+                </form>
+                <!-- Duplicate Stock Codes -->
+                <br>
+                <hr>
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Duplicate Stock Codes</h6>
+                </div>
+                <div class="card-body">
+                    {% if grouped_stock_prices %}
+                    <form id="removeDuplicatesForm">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Select</th>
+                                    <th>Stock Code</th>
+                                    <th>Unit Price</th>
+                                    <th>Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for group in grouped_stock_prices %}
+                                    {% for price in group %}
+                                        <tr>
+                                            <td><input type="checkbox" name="selected_ids" value="{{ price.id }}"></td>
+                                            <td>{{ price.stock_code }}</td>
+                                            <td>{{ price.unit_price }}</td>
+                                            <td>{{ price.last_updated }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    <tr><td colspan="4"><hr></td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="submit" id="removeDuplicatesBtn">Remove Selected Duplicates</button>
+                    </form>
+                    <hr>
+                    <p>To download the list of duplicates please press the following button.</p>
+                    <a href="{{ url_for('main.download_duplicate_list') }}" class="btn btn-primary">Download Duplicate List</a>
+                {% else %}
+                    <p>No duplicate stock codes with different unit prices found.</p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Update Stock Prices via CSV</h6>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('main.stock_details') }}" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="file">Upload CSV File</label>
+                        <input type="file" class="form-control-file" id="file" name="file" accept=".csv" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload and Update Prices</button>
+                </form>
+                <hr>
+                <a href="{{ url_for('main.download_csv_format') }}" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> Download CSV Format
+                </a>
+                <br>
+                <hr>
+                <br>
+                <form action="{{ url_for('main.clear_stock_prices') }}" method="post">
+                    <p>This following button removes all the stocks and their prices from the database!</p>
+                    <button type="submit" class="btn btn-danger">Clear All Stock Prices</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#stockDetailsTable').DataTable({
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            "pageLength": 10,
+            "dom": '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip',
+            "language": {
+                "lengthMenu": "Show _MENU_ entries",
+                "search": "Search:",
+                "info": "Showing _START_ to _END_ of _TOTAL_ entries"
+            }
+        });
+        function displayMessage(message, status) {
+            var messageContainer = $('#message-container');
+            messageContainer.empty();
+            var alertClass = status === 'success' ? 'alert-success' : 'alert-danger';
+            var messageElement = $('<div>').addClass('alert ' + alertClass).text(message);
+            messageContainer.append(messageElement);
+        }
+
+        $(document).ready(function() {
+        $('#uploadForm').on('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            $.ajax({
+                url: '{{ url_for("main.stock_details") }}',
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    location.reload();
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                },
+                cache: false,
+                contentType: false,
+                processData: false
+            });
+        });
+
+        $('#removeDuplicatesForm').on('submit', function(e) {
+            e.preventDefault();
+            var selectedIds = $('input[name="selected_ids"]:checked').map(function() {
+                return this.value;
+            }).get();
+
+            if (selectedIds.length === 0) {
+                alert('Please select at least one item to remove.');
+                return;
+            }
+
+            $.ajax({
+                url: '{{ url_for("main.remove_duplicates") }}',
+                type: 'POST',
+                data: JSON.stringify({ids: selectedIds}),
+                contentType: 'application/json',
+                success: function(response) {
+                    alert(response.message);
+                    location.reload();
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    alert('An error occurred while removing duplicates.');
+                }
+            });
+        });
+
+        $('#single-stock-form').submit(function(event) {
+            event.preventDefault();
+            var formData = $(this).serialize();
+            
+            $.ajax({
+                url: '/stock_details',
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    displayMessage(response.message, response.status);
+                    if (response.status === 'success') {
+                        location.reload();  // Reload the page to show updated stock price
+                    }
+                },
+                error: function(xhr, status, error) {
+                    displayMessage('An error occurred while updating the stock price: ' + error, 'error');
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

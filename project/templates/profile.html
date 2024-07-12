@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">Welcome, {{ name.name }}!</h1>
+<hr>
+<br>
+<div class="mb-4 d-flex">
+    <div class="mr-2">
+        <label for="accountFilter">Filter by Account ID:</label>
+        <select id="accountFilter" class="form-control" style="width: 200px;">
+            <option value="All" {% if selected_account_id == 'All' %}selected{% endif %}>All</option>
+            {% for account_id in account_ids %}
+            <option value="{{ account_id }}" {% if selected_account_id == account_id %}selected{% endif %}>{{ account_id }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mr-2">
+        <label for="weekFilter">Filter by Week:</label>
+        <select id="weekFilter" class="form-control" style="width: 200px;">
+            <option value="All" {% if selected_week == 'All' %}selected{% endif %}>All</option>
+            {% for week in weeks %}
+            <option value="{{ week }}" {% if selected_week == week %}selected{% endif %}>{{ week }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="ml-2">
+        <button id="excludeCancelledBtn" class="btn {% if exclude_cancelled %}btn-primary{% else %}btn-secondary{% endif %}">
+            {% if exclude_cancelled %}Include Cancelled List{% else %}Exclude Cancelled List{% endif %}
+        </button>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table id="salesOrderTable" class="table table-striped table-bordered" style="width:100%">
+        <thead>
+            <tr>
+                <th>Account ID</th>
+                <th>Stock Code</th>
+                <th>Issue</th>
+                <th>Required Date</th>
+                <th>Required Quantity</th>
+                <th>Order Reference</th>
+                <th>Location</th>
+                <th>Message</th>
+                <th>Last Delivery Note</th>
+                <th>Last Delivery Date</th>
+                <th>Week</th>
+                <th>Month</th>
+                <th>Unit Price</th>
+                <th>Sale Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in sales_orders %}
+            <tr>
+                <td>{{ order.account_id }}</td>
+                <td>{{ order.stock_code }}</td>
+                <td>{{ order.issue }}</td>
+                <td>{{ order.required_date.strftime('%d-%m-%Y') }}</td>
+                <td>{{ order.required_quantity }}</td>
+                <td>{{ order.order_reference }}</td>
+                <td>{{ order.location }}</td>
+                <td>{{ order.message }}</td>
+                <td>{{ order.last_delivery_note }}</td>
+                <td>{{ order.last_delivery_date.strftime('%d-%m-%Y') if order.last_delivery_date else '' }}</td>
+                <td>{{ order.week }}</td>
+                <td>{{ order.month }}</td>
+                <td>{{ "£%.2f"|format(order.unit_price) if order.unit_price is not none else 'N/A' }}</td>
+                <td>{{ "£%.2f"|format(order.sale_price) if order.sale_price is not none else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+$(document).ready(function() {
+    var table = $('#salesOrderTable').DataTable({
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+        "pageLength": 10,
+        "order": [[3, "asc"]], // Sort by Required Date column (index 3) in ascending order
+        "columnDefs": [
+            { "type": "date-eu", "targets": 3 } // Assuming Required Date is in column index 3
+        ],
+        "language": {
+            "lengthMenu": "Show _MENU_ entries",
+            "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+            "infoEmpty": "Showing 0 to 0 of 0 entries",
+            "infoFiltered": "(filtered from _MAX_ total entries)",
+            "search": "Search:",
+            "paginate": {
+                "first": "First",
+                "last": "Last",
+                "next": "Next",
+                "previous": "Previous"
+            }
+        },
+        "order": [], // This will disable initial sorting
+        "dom": '<"top"lf>rt<"bottom"ip><"clear">'
+    });
+
+    function updateTable() {
+        var accountId = $('#accountFilter').val();
+        var week = $('#weekFilter').val();
+        var excludeCancelled = $('#excludeCancelledBtn').hasClass('btn-primary');
+
+        var url = new URL(window.location);
+        url.searchParams.set('account_id', accountId);
+        url.searchParams.set('week', week);
+        url.searchParams.set('exclude_cancelled', excludeCancelled);
+        window.location.href = url.toString();
+    }
+
+    $('#accountFilter, #weekFilter').on('change', updateTable);
+
+    $('#excludeCancelledBtn').on('click', function() {
+        $(this).toggleClass('btn-secondary btn-primary');
+        if ($(this).hasClass('btn-primary')) {
+            $(this).text('Include Cancelled List');
+        } else {
+            $(this).text('Exclude Cancelled List');
+        }
+        updateTable();
+    });
+});
+</script>
+{% endblock %}
