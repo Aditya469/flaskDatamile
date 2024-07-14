@@ -44,6 +44,15 @@
             {% endfor %}
         </select>
     </div>
+    <div class="form-group">
+        <label>Include further Weeks:</label>
+        <div>
+            <label><input type="checkbox" name="additional_weeks" value="Week - 5"> Week - 5</label>
+            <label><input type="checkbox" name="additional_weeks" value="Week - 6"> Week - 6</label>
+            <label><input type="checkbox" name="additional_weeks" value="Week - 7"> Week - 7</label>
+            <label><input type="checkbox" name="additional_weeks" value="Week - 8"> Week - 8</label>
+        </div>
+    </div>   
 </div>
 
 
@@ -184,7 +193,7 @@
         $.fn.dataTable.ext.search.push(
             function(settings, data, dataIndex) {
                 var accountMatch = accountFilter === "" || data[0] === accountFilter;
-                var weekMatch = weekFilter === "" || data[8] === weekFilter;
+                var weekMatch = weekFilter === "" || data[9] === weekFilter;
                 var dateMatch = dateFilter === "" || data[3] === dateFilter;
                 return accountMatch && weekMatch && dateMatch;
             }
@@ -220,14 +229,22 @@
                 "info": "Showing _START_ to _END_ of _TOTAL_ entries"
             },
             "order": [] // This will disable initial sorting
-        });
+        });        
 
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var additionalWeeks = Array.from(document.querySelectorAll('input[name="additional_weeks"]:checked')).map(cb => cb.value);
+            var url = new URL(this.action);
+            var params = new URLSearchParams(url.search);
+            additionalWeeks.forEach(week => params.append('additional_weeks', week));
+            url.search = params.toString();
+            window.location.href = url.toString();
+        });
         // Add event listener to filter dropdowns
         $('#accountFilter, #weekFilter, #dateFilter').on('change', applyFilters);
 
-        // Initial table display
-        showTable('picklist');
     });
+
     document.getElementById('generatePdfBtn').addEventListener('click', function() {
         fetch('{{ url_for("main.generate_picklist_pdf") }}')
             .then(response => response.json())
@@ -242,6 +259,9 @@
                 console.error('Error:', error);
                 alert('An error occurred while generating PDFs');
             });
+
+        // Initial table display
+        showTable('picklist');
     });
 </script>
 {% endblock %}
