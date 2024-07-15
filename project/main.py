@@ -28,7 +28,7 @@ from PyPDF2 import PdfMerger
 main = Blueprint('main', __name__)
 
 # Set the upload folder path
-UPLOAD_FOLDER = "./project/hse_storage"
+UPLOAD_FOLDER = "C:/Users/Rama/flaskDatamile/project/hse_storage"
 
 def get_server_info():
     hostname = socket.gethostname()
@@ -40,25 +40,17 @@ def get_server_info():
 def inject_server_info():
     return dict(server_info=get_server_info())
 
-@main.route('/', methods=['GET', 'POST'])
+@main.route('/')
 def index():
     selected_table = request.args.get('table', 'picklist')
     selected_account_id = request.args.get('account_id', 'All')
-    
-    # Default weeks
-    default_weeks = ['Arrears', 'Week - 1', 'Week - 2', 'Week - 3', 'Week - 4']
-    
-    # Get additional selected weeks
-    additional_weeks = request.args.getlist('additional_weeks')
-    
-    # Combine default and additional weeks
-    selected_weeks = default_weeks + additional_weeks
+    selected_week = request.args.get('week', 'All')
 
     # Define week_order for Picklist
     picklist_week_order = case(
         (Picklist.week == 'Arrears', 0),
         else_=case(
-            (Picklist.week.startswith('Week - '), func.cast(func.substr(Picklist.week, 8), Integer)),
+            (Picklist.week.startswith('Week - '), func.cast(func.substr(Picklist.week, 9), Integer)),
             else_=9999
         )
     )
@@ -67,7 +59,7 @@ def index():
     cancelled_week_order = case(
         (CancelledList.week == 'Arrears', 0),
         else_=case(
-            (CancelledList.week.startswith('Week - '), func.cast(func.substr(CancelledList.week, 8), Integer)),
+            (CancelledList.week.startswith('Week - '), func.cast(func.substr(CancelledList.week, 9), Integer)),
             else_=9999
         )
     )
@@ -93,10 +85,10 @@ def index():
     if selected_account_id != 'All':
         picklist_query = picklist_query.filter(Picklist.account_id == selected_account_id)
         cancelled_query = cancelled_query.filter(CancelledList.account_id == selected_account_id)
-
-    if selected_weeks:
-        picklist_query = Picklist.query.filter(Picklist.week.in_(selected_weeks))
-        cancelled_query = CancelledList.query.filter(CancelledList.week.in_(selected_weeks))
+    
+    if selected_week != 'All':
+        picklist_query = picklist_query.filter(Picklist.week == selected_week)
+        cancelled_query = cancelled_query.filter(CancelledList.week == selected_week)
 
     picklist_items = picklist_query.all()
     cancelled_items = cancelled_query.all()
@@ -122,9 +114,9 @@ def index():
         cancelled_dates = cancelled_dates.filter(CancelledList.account_id == selected_account_id)
         required_dates_query = picklist_dates.union(cancelled_dates).distinct()
 
-    if selected_weeks:
-        picklist_query = picklist_query.filter(Picklist.week.in_(selected_weeks))
-        cancelled_query = cancelled_query.filter(CancelledList.week.in_(selected_weeks))
+    if selected_week != 'All':
+        picklist_dates = picklist_dates.filter(Picklist.week == selected_week)
+        cancelled_dates = cancelled_dates.filter(CancelledList.week == selected_week)
         required_dates_query = picklist_dates.union(cancelled_dates).distinct()
 
     # Fetch all dates
@@ -139,14 +131,14 @@ def index():
     required_dates.sort(key=date_sort_key)
 
     return render_template('index.html', 
-                           picklist_items=picklist_items, 
+                           picklist_items=picklist_items,
                            cancelled_items=cancelled_items,
-                           account_ids=account_ids,
-                           weeks=weeks,
+                           account_ids=account_ids, 
+                           weeks=weeks, 
                            required_dates=required_dates,
                            selected_table=selected_table,
                            selected_account_id=selected_account_id,
-                           selected_weeks=selected_weeks)
+                           selected_week=selected_week)
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -197,13 +189,12 @@ def header(canvas, doc, account_id):
 
 @main.route('/generate_picklist_pdf')
 def generate_picklist_pdf():
-    selected_weeks = request.args.getlist('weeks[]') or ['Arrears', 'Week - 1', 'Week - 2', 'Week - 3', 'Week - 4']
     # Create directory if it doesn't exist
     pdf_dir = os.path.join(current_app.root_path, 'picklist', 'separate_sheets')
     os.makedirs(pdf_dir, exist_ok=True)
 
     # Query all picklist items
-    picklist_items = Picklist.query.filter(Picklist.week.in_(selected_weeks)).order_by(
+    picklist_items = Picklist.query.order_by(
         Picklist.account_id,
         case(
             (Picklist.week == 'Arrears', 0),
@@ -352,13 +343,12 @@ def generate_picklist_pdf():
 
 @main.route('/generate_cancelled_list_pdf')
 def generate_cancelled_list_pdf():
-    selected_weeks = request.args.getlist('weeks[]') or ['Arrears', 'Week - 1', 'Week - 2', 'Week - 3', 'Week - 4']
     # Create directory if it doesn't exist
     pdf_dir = os.path.join(current_app.root_path, 'cancelled_list', 'separate_sheets')
     os.makedirs(pdf_dir, exist_ok=True)
 
     # Query all cancelled list items
-    cancelled_items = CancelledList.query.filter(CancelledList.week.in_(selected_weeks)).order_by(
+    cancelled_items = CancelledList.query.order_by(
         CancelledList.account_id,
         case(
             (CancelledList.week == 'Arrears', 0),
@@ -1315,3 +1305,5 @@ app = create_app()
 
 if __name__ == '__main__':
     app.run(debug=True)
+    
+

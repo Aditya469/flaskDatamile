@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<script src="{{ url_for('static', filename='js/moment.min.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -44,15 +44,6 @@
             {% endfor %}
         </select>
     </div>
-    <div class="form-group">
-        <label>Include further Weeks:</label>
-        <div>
-            <label><input type="checkbox" name="additional_weeks" value="Week - 5"> Week - 5</label>
-            <label><input type="checkbox" name="additional_weeks" value="Week - 6"> Week - 6</label>
-            <label><input type="checkbox" name="additional_weeks" value="Week - 7"> Week - 7</label>
-            <label><input type="checkbox" name="additional_weeks" value="Week - 8"> Week - 8</label>
-        </div>
-    </div>   
 </div>
 
 
@@ -229,22 +220,14 @@
                 "info": "Showing _START_ to _END_ of _TOTAL_ entries"
             },
             "order": [] // This will disable initial sorting
-        });        
-
-        document.querySelector('form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            var additionalWeeks = Array.from(document.querySelectorAll('input[name="additional_weeks"]:checked')).map(cb => cb.value);
-            var url = new URL(this.action);
-            var params = new URLSearchParams(url.search);
-            additionalWeeks.forEach(week => params.append('additional_weeks', week));
-            url.search = params.toString();
-            window.location.href = url.toString();
         });
+
         // Add event listener to filter dropdowns
         $('#accountFilter, #weekFilter, #dateFilter').on('change', applyFilters);
 
+        // Initial table display
+        showTable('picklist');
     });
-
     document.getElementById('generatePdfBtn').addEventListener('click', function() {
         fetch('{{ url_for("main.generate_picklist_pdf") }}')
             .then(response => response.json())
@@ -259,9 +242,6 @@
                 console.error('Error:', error);
                 alert('An error occurred while generating PDFs');
             });
-
-        // Initial table display
-        showTable('picklist');
     });
 </script>
 {% endblock %}
