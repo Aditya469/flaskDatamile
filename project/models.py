@@ -36,7 +36,7 @@ class SalesOrder(db.Model):
 class Picklist(db.Model):
     account_id = db.Column(db.String(10), primary_key=True)
     stock_code = db.Column(db.String(20), primary_key=True)
-    issue = db.Column(db.String(10), primary_key=True)
+    issue = db.Column(db.String(10))
     required_date = db.Column(db.Date, primary_key=True)
     required_day = db.Column(db.String(10))
     required_quantity = db.Column(db.Integer, primary_key=True)
@@ -51,7 +51,7 @@ class Picklist(db.Model):
 class CancelledList(db.Model):
     account_id = db.Column(db.String(10), primary_key=True)
     stock_code = db.Column(db.String(20), primary_key=True)
-    issue = db.Column(db.String(10), primary_key=True)
+    issue = db.Column(db.String(10))
     required_date = db.Column(db.Date, primary_key=True)
     required_day = db.Column(db.String(10))
     required_quantity = db.Column(db.Integer, primary_key=True)

@@ -1086,113 +1086,125 @@ def clear_app_data():
 @login_required
 def hse_uploader():
     if request.method == 'POST':
-        try:
-            # Delete all files in the UPLOAD_FOLDER
-            for filename in os.listdir(UPLOAD_FOLDER):
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            print("All previous files deleted successfully.")
-        except Exception as e:
-            print(f"Error deleting previous files: {str(e)}")
-            return jsonify({'status': 'error', 'message': f"Error deleting previous files: {str(e)}"})
+        try: 
+            try:
+                # Delete all files in the UPLOAD_FOLDER
+                for filename in os.listdir(UPLOAD_FOLDER):
+                    file_path = os.path.join(UPLOAD_FOLDER, filename)
+                    if os.path.isfile(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                logging.info("All previous files deleted successfully.")
+            except Exception as e:
+                logging.error(f"Error deleting previous files: {str(e)}")
+                return jsonify({'status': 'error', 'message': f"Error deleting previous files: {str(e)}"})
 
-        hse_files = request.files.getlist('hse_files')
-        if not hse_files:
-            return jsonify({'status': 'error', 'message': "No files were uploaded."})
+            hse_files = request.files.getlist('hse_files')
+            if not hse_files:
+                return jsonify({'status': 'error', 'message': "No files were uploaded."})
 
-        file_count = 0
-        processed_files = []
-        error_files = []
+            file_count = 0
+            processed_files = []
+            error_files = []
 
-        for hse_file in hse_files:
-            if hse_file.filename.lower().endswith('.hse'):
-                try:
-                    # Save the uploaded file to the specified location
-                    file_path = os.path.join(UPLOAD_FOLDER, hse_file.filename)
-                    hse_file.save(file_path)
+            for hse_file in hse_files:
+                if hse_file.filename.lower().endswith('.hse'):
+                    try:
+                        # Save the uploaded file to the specified location
+                        file_path = os.path.join(UPLOAD_FOLDER, hse_file.filename)
+                        hse_file.save(file_path)
 
-                    # Process the uploaded file
-                    df = read_hse_file(file_path)
-                    if df.empty:
-                        raise ValueError("The file is empty or couldn't be parsed correctly.")
+                        logging.info(f"Processing file: {hse_file.filename}")
 
-                    account_id = get_account_id(hse_file.filename)
-                    if account_id == 'Unknown':
-                        raise ValueError("Unable to determine account ID from filename.")
+                        # Process the uploaded file
+                        df = read_hse_file(file_path)
+                        if df.empty:
+                            raise ValueError("The file is empty or couldn't be parsed correctly.")
 
-                    # Start a new transaction for each file
-                    with db.session.begin():
-                        for _, row in df.iterrows():
-                            # Check if the row already exists in the database
-                            existing_order = SalesOrder.query.filter_by(
-                                account_id=account_id,
-                                stock_code=row['Stock Code'],
-                                issue=row['Issue'],
-                                required_date=row['Required Date'],
-                                required_quantity=row['Required Quantities']
-                            ).first()
+                        account_id = get_account_id(hse_file.filename)
+                        if account_id == 'Unknown':
+                            raise ValueError("Unable to determine account ID from filename.")
 
-                            if not existing_order:
-                                # Add the new row to the database
-                                sales_order = SalesOrder(
+                        logging.info(f"Account ID: {account_id}")
+                        logging.info(f"DataFrame shape: {df.shape}")
+
+                        # Start a new transaction for each file
+                        with db.session.begin():
+                            for _, row in df.iterrows():
+                                # Check if the row already exists in the database
+                                existing_order = SalesOrder.query.filter_by(
                                     account_id=account_id,
                                     stock_code=row['Stock Code'],
                                     issue=row['Issue'],
                                     required_date=row['Required Date'],
-                                    required_quantity=row['Required Quantities'],
-                                    order_reference=row['Order Reference'],
-                                    location=row['Location'],
-                                    message=row['Message'],
-                                    last_delivery_note=row['Last Delivery Note'] if row['Last Delivery Note'] != 'NO PREVIOUS' else None,
-                                    last_delivery_date=row['Last Delivery Date'],
-                                    month=row['Month']
-                                )
-                                db.session.add(sales_order)
-                                file_count += 1
+                                    required_quantity=row['Required Quantities']
+                                ).first()
 
-                        # Update the 'week' column using the custom SQL Stored Procedure
-                        db.session.execute(text("CALL update_week_column()"))
+                                if not existing_order:
+                                    # Add the new row to the database
+                                    sales_order = SalesOrder(
+                                        account_id=account_id,
+                                        stock_code=row['Stock Code'],
+                                        issue=row['Issue'],
+                                        required_date=row['Required Date'],
+                                        required_quantity=row['Required Quantities'],
+                                        order_reference=row['Order Reference'],
+                                        location=row['Location'],
+                                        message=row['Message'],
+                                        last_delivery_note=row['Last Delivery Note'] if row['Last Delivery Note'] != 'NO PREVIOUS' else None,
+                                        last_delivery_date=row['Last Delivery Date'],
+                                        month=row['Month']
+                                    )
+                                    db.session.add(sales_order)
+                                    file_count += 1
 
-                        # Call the create_picklist() stored procedure
-                        db.session.execute(text("CALL create_picklist()"))
+                            # Update the 'week' column using the custom SQL Stored Procedure
+                            db.session.execute(text("CALL update_week_column()"))
 
-                        # Call the create_cancelled_list() stored procedure
-                        db.session.execute(text("CALL create_cancelled_list()"))
+                            # Call the create_picklist() stored procedure
+                            db.session.execute(text("CALL create_picklist()"))
 
-                        # Update only SalesOrder table with new unit prices and sale prices
-                        stock_prices = StockPrice.query.all()
-                        for stock_price in stock_prices:
-                            # Update SalesOrder table
-                            SalesOrder.query.filter_by(stock_code=stock_price.stock_code).update({
-                                SalesOrder.unit_price: stock_price.unit_price,
-                                SalesOrder.sale_price: SalesOrder.required_quantity * stock_price.unit_price
-                            }, synchronize_session=False)
+                            # Call the create_cancelled_list() stored procedure
+                            db.session.execute(text("CALL create_cancelled_list()"))
 
-                        # Call the generate_forecasts() stored procedure
-                        db.session.execute(text("CALL generate_forecasts()"))
+                            # Update only SalesOrder table with new unit prices and sale prices
+                            stock_prices = StockPrice.query.all()
+                            for stock_price in stock_prices:
+                                # Update SalesOrder table
+                                SalesOrder.query.filter_by(stock_code=stock_price.stock_code).update({
+                                    SalesOrder.unit_price: stock_price.unit_price,
+                                    SalesOrder.sale_price: SalesOrder.required_quantity * stock_price.unit_price
+                                }, synchronize_session=False)
 
-                    processed_files.append(hse_file.filename)
-                except Exception as e:
-                    db.session.rollback()
-                    error_message = f"Error processing file {hse_file.filename}: {str(e)}"
-                    print(error_message)
-                    logging.error(error_message)
-                    error_files.append((hse_file.filename, str(e)))
+                            # Call the generate_forecasts() stored procedure
+                            db.session.execute(text("CALL generate_forecasts()"))
+
+                        processed_files.append(hse_file.filename)
+                        file_count += 1
+
+                    except Exception as e:
+                            db.session.rollback()
+                            error_message = f"Error processing file {hse_file.filename}: {str(e)}"
+                            logging.error(error_message)
+                            error_files.append((hse_file.filename, str(e)))
+
+                    else:
+                        error_files.append((hse_file.filename, "Not an HSE file"))
+
+            if file_count > 0:
+                message = f"{file_count} new sales orders have been added and processed successfully!"
+                if error_files:
+                    message += f" However, there were issues with {len(error_files)} file(s)."
+                return jsonify({'status': 'success', 'message': message, 'processed_files': processed_files, 'error_files': error_files})
+            elif error_files:
+                return jsonify({'status': 'error', 'message': f"There were issues processing {len(error_files)} file(s). Please check the error details.", 'error_files': error_files})
             else:
-                error_files.append((hse_file.filename, "Not an HSE file"))
-
-        if file_count > 0:
-            message = f"{file_count} new sales orders have been added and processed successfully!"
-            if error_files:
-                message += f" However, there were issues with {len(error_files)} file(s)."
-            return jsonify({'status': 'success', 'message': message, 'processed_files': processed_files, 'error_files': error_files})
-        elif error_files:
-            return jsonify({'status': 'error', 'message': f"There were issues processing {len(error_files)} file(s). Please try with a different file!.", 'error_files': error_files})
-        else:
-            return jsonify({'status': 'info', 'message': "No new sales orders were added. The files may have already been processed."})
+                return jsonify({'status': 'info', 'message': "No new sales orders were added. The files may have already been processed."})
+            
+        except Exception as e:
+            logging.error(f"Unexpected error in hse_uploader: {str(e)}")
+            return jsonify({'status': 'error', 'message': f"An unexpected error occurred: {str(e)}"})
 
     return render_template('hse_uploader.html')
 
@@ -1205,66 +1217,82 @@ def read_hse_file(file_path):
         (23, 31),  # required quantities
         (32, 42),  # order reference
         (43, 48),  # location
-        (55, 75),  # message
+        (50, 74),  # message (adjusted to cover full width)
         (76, 91),  # last delivery note
         (92, 100)  # last delivery date
     ]
 
-    df = pd.read_fwf(file_path, colspecs=col_specs, header=None)
-    
-    # Assign column names
-    df.columns = [
-        'Stock Code', 'Issue', 'Required Date', 'Required Quantities',
-        'Order Reference', 'Location', 'Message', 'Last Delivery Note', 'Last Delivery Date'
-    ]
+    try:
+        # Read the file using read_fwf
+        df = pd.read_fwf(file_path, colspecs=col_specs, header=None)
+        
+        # Assign column names
+        df.columns = [
+            'Stock Code', 'Issue', 'Required Date', 'Required Quantities',
+            'Order Reference', 'Location', 'Message', 'Last Delivery Note', 'Last Delivery Date'
+        ]
 
-    # Convert 'Required Date' to datetime format
-    df['Required Date'] = pd.to_datetime(df['Required Date'], format='%Y%m%d', errors='coerce')
+        # Strip whitespace from all string columns
+        for col in df.select_dtypes(include=['object']):
+            df[col] = df[col].str.strip()
 
-    # Convert 'Required Quantities' to string and remove leading zeros
-    df['Required Quantities'] = df['Required Quantities'].astype(str).str.lstrip('0')
+        # Handle '00' values in the 'Issue' column
+        df['Issue'] = df['Issue'].replace('00', '0')
 
-    # Replace empty strings with '0' for 'Required Quantities'
-    df['Required Quantities'] = df['Required Quantities'].replace('', '0')
+        # Convert 'Required Date' to datetime format
+        df['Required Date'] = pd.to_datetime(df['Required Date'], format='%Y%m%d', errors='coerce')
 
-    # Filter to include all rows
-    df_filtered = df.copy()
+        # Convert 'Required Quantities' to string and remove leading zeros
+        df['Required Quantities'] = df['Required Quantities'].astype(str).str.lstrip('0')
 
-    # Exclude rows with specific stock codes
-    excluded_stock_codes = ['400/U4238', '400/U4239', '331/62858']
-    df_filtered = df_filtered[~df_filtered['Stock Code'].isin(excluded_stock_codes)]
+        # Replace empty strings with '0' for 'Required Quantities'
+        df['Required Quantities'] = df['Required Quantities'].replace('', '0')
 
-    # Format the 'Month' column to include the year
-    df_filtered['Month'] = df_filtered['Required Date'].dt.strftime('%B %Y')
+        # Filter to include all rows
+        df_filtered = df.copy()
 
-    # Convert 'Last Delivery Date' to datetime format
-    df_filtered['Last Delivery Date'] = pd.to_datetime(df_filtered['Last Delivery Date'], format='%Y%m%d', errors='coerce')
+        # Exclude rows with specific stock codes
+        excluded_stock_codes = ['400/U4238', '400/U4239', '331/62858']
+        df_filtered = df_filtered[~df_filtered['Stock Code'].isin(excluded_stock_codes)]
 
-    # Convert 'Required Date' and 'Last Delivery Date' to date objects
-    df_filtered['Required Date'] = df_filtered['Required Date'].dt.date
-    df_filtered['Last Delivery Date'] = df_filtered['Last Delivery Date'].dt.date
+        # Format the 'Month' column to include the year
+        df_filtered['Month'] = df_filtered['Required Date'].dt.strftime('%B %Y')
 
-    # Drop duplicate rows based on 'Stock Code', 'Issue', 'Required Date', and 'Required Quantities'
-    df_filtered = df_filtered.drop_duplicates(subset=['Stock Code', 'Issue', 'Required Date', 'Required Quantities'])
+        # Convert 'Last Delivery Date' to datetime format
+        df_filtered['Last Delivery Date'] = pd.to_datetime(df_filtered['Last Delivery Date'], format='%Y%m%d', errors='coerce')
 
-    # Convert 'Required Quantities' to float
-    df_filtered['Required Quantities'] = df_filtered['Required Quantities'].astype(float)
+        # Convert 'Required Date' and 'Last Delivery Date' to date objects
+        df_filtered['Required Date'] = df_filtered['Required Date'].dt.date
+        df_filtered['Last Delivery Date'] = df_filtered['Last Delivery Date'].dt.date
 
-    # Add 'Unit Price' column with a default value of 0
-    df_filtered['Unit Price'] = 0
+        # Drop duplicate rows based on 'Stock Code', 'Issue', 'Required Date', and 'Required Quantities'
+        df_filtered = df_filtered.drop_duplicates(subset=['Stock Code', 'Issue', 'Required Date', 'Required Quantities'])
 
-    # Calculate 'Sale Price' as 'Unit Price' * 'Required Quantities'
-    df_filtered['Sale Price'] = df_filtered['Unit Price'] * df_filtered['Required Quantities']
+        # Convert 'Required Quantities' to float
+        df_filtered['Required Quantities'] = df_filtered['Required Quantities'].astype(float)
 
-    # Replace NaN values with appropriate fill values or methods
-    fill_values = {
-        'Message': '',  # Replace NaN values in 'Message' column with an empty string
-        'Unit Price': 0,  # Replace NaN values in 'Unit Price' column with 0
-        'Sale Price': 0  # Replace NaN values in 'Sale Price' column with 0
-    }
-    df_filtered = df_filtered.fillna(fill_values)
+        # Add 'Unit Price' column with a default value of 0
+        df_filtered['Unit Price'] = 0
 
-    return df_filtered
+        # Calculate 'Sale Price' as 'Unit Price' * 'Required Quantities'
+        df_filtered['Sale Price'] = df_filtered['Unit Price'] * df_filtered['Required Quantities']
+
+        # Replace NaN values with appropriate fill values or methods
+        fill_values = {
+            'Message': '',  # Replace NaN values in 'Message' column with an empty string
+            'Unit Price': 0,  # Replace NaN values in 'Unit Price' column with 0
+            'Sale Price': 0  # Replace NaN values in 'Sale Price' column with 0
+        }
+        df_filtered = df_filtered.fillna(fill_values)
+
+        # Log the first few rows for debugging
+        logging.info(f"First 5 rows of processed data:\n{df_filtered.head().to_string()}")
+
+        return df_filtered
+
+    except Exception as e:
+        logging.error(f"Error processing file {file_path}: {str(e)}")
+        raise
 
 
 def get_account_id(filename):
