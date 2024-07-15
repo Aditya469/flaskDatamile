@@ -1,3 +1,5 @@
+-- Create sales_order table (you'll need to define/change this based on your requirements) 
+-- This don't have procedure the table gets filled with rows from python flask application.
 DROP TABLE IF EXISTS sales_order;
 
 CREATE TABLE sales_order (
@@ -7,10 +9,10 @@ CREATE TABLE sales_order (
     issue VARCHAR(10),
     required_date DATE,
     required_quantity INT,
-    order_reference INT,
+    order_reference VARCHAR(30),
     location VARCHAR(10),
     message VARCHAR(20),
-    last_delivery_note INT,
+    last_delivery_note VARCHAR(20),
     last_delivery_date DATE,
     week VARCHAR(10),
     month VARCHAR(20),

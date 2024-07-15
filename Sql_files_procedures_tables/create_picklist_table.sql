@@ -1,3 +1,4 @@
+-- create picklist table
 DROP TABLE IF EXISTS picklist;
 
 CREATE TABLE picklist (
@@ -7,7 +8,7 @@ CREATE TABLE picklist (
     required_date DATE,
     required_day VARCHAR(10),
     required_quantity INT,
-    order_reference INT,
+    order_reference VARCHAR(30),
     location VARCHAR(20),
     message VARCHAR(20),
     week VARCHAR(10),

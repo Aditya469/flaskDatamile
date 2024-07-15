@@ -3,6 +3,7 @@ import shutil
 import csv
 import socket
 import pandas as pd
+import logging
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, letter
@@ -22,6 +23,7 @@ from . import db
 from datetime import datetime
 from sqlalchemy import text, func, case
 from sqlalchemy.types import Integer
+from sqlalchemy.exc import SQLAlchemyError
 from project import create_app
 from PyPDF2 import PdfMerger
 
@@ -1121,67 +1123,64 @@ def hse_uploader():
                     if account_id == 'Unknown':
                         raise ValueError("Unable to determine account ID from filename.")
 
-                    for _, row in df.iterrows():
-                        # Check if the row already exists in the database
-                        existing_order = SalesOrder.query.filter_by(
-                            account_id=account_id,
-                            stock_code=row['Stock Code'],
-                            issue=row['Issue'],
-                            required_date=row['Required Date'],
-                            required_quantity=row['Required Quantities']
-                        ).first()
-
-                        if not existing_order:
-                            # Add the new row to the database
-                            sales_order = SalesOrder(
+                    # Start a new transaction for each file
+                    with db.session.begin():
+                        for _, row in df.iterrows():
+                            # Check if the row already exists in the database
+                            existing_order = SalesOrder.query.filter_by(
                                 account_id=account_id,
                                 stock_code=row['Stock Code'],
                                 issue=row['Issue'],
                                 required_date=row['Required Date'],
-                                required_quantity=row['Required Quantities'],
-                                order_reference=row['Order Reference'],
-                                location=row['Location'],
-                                message=row['Message'],
-                                last_delivery_note=row['Last Delivery Note'],
-                                last_delivery_date=row['Last Delivery Date'],
-                                month=row['Month']
-                            )
-                            db.session.add(sales_order)
-                            file_count += 1
+                                required_quantity=row['Required Quantities']
+                            ).first()
 
-                    db.session.commit()
+                            if not existing_order:
+                                # Add the new row to the database
+                                sales_order = SalesOrder(
+                                    account_id=account_id,
+                                    stock_code=row['Stock Code'],
+                                    issue=row['Issue'],
+                                    required_date=row['Required Date'],
+                                    required_quantity=row['Required Quantities'],
+                                    order_reference=row['Order Reference'],
+                                    location=row['Location'],
+                                    message=row['Message'],
+                                    last_delivery_note=row['Last Delivery Note'] if row['Last Delivery Note'] != 'NO PREVIOUS' else None,
+                                    last_delivery_date=row['Last Delivery Date'],
+                                    month=row['Month']
+                                )
+                                db.session.add(sales_order)
+                                file_count += 1
 
-                    # Update the 'week' column using the custom SQL Stored Procedure
-                    db.session.execute(text("CALL update_week_column()"))
-                    db.session.commit()
+                        # Update the 'week' column using the custom SQL Stored Procedure
+                        db.session.execute(text("CALL update_week_column()"))
 
-                    # Call the create_picklist() stored procedure
-                    db.session.execute(text("CALL create_picklist()"))
-                    db.session.commit()
+                        # Call the create_picklist() stored procedure
+                        db.session.execute(text("CALL create_picklist()"))
 
-                    # Call the create_cancelled_list() stored procedure
-                    db.session.execute(text("CALL create_cancelled_list()"))
-                    db.session.commit()
+                        # Call the create_cancelled_list() stored procedure
+                        db.session.execute(text("CALL create_cancelled_list()"))
 
-                    # Update only SalesOrder table with new unit prices and sale prices
-                    stock_prices = StockPrice.query.all()
-                    for stock_price in stock_prices:
-                        # Update SalesOrder table
-                        SalesOrder.query.filter_by(stock_code=stock_price.stock_code).update({
-                            SalesOrder.unit_price: stock_price.unit_price,
-                            SalesOrder.sale_price: SalesOrder.required_quantity * stock_price.unit_price
-                        }, synchronize_session=False)
+                        # Update only SalesOrder table with new unit prices and sale prices
+                        stock_prices = StockPrice.query.all()
+                        for stock_price in stock_prices:
+                            # Update SalesOrder table
+                            SalesOrder.query.filter_by(stock_code=stock_price.stock_code).update({
+                                SalesOrder.unit_price: stock_price.unit_price,
+                                SalesOrder.sale_price: SalesOrder.required_quantity * stock_price.unit_price
+                            }, synchronize_session=False)
 
-                    db.session.commit()
-
-                    # Call the generate_forecasts() stored procedure
-                    db.session.execute(text("CALL generate_forecasts()"))
-                    db.session.commit()
+                        # Call the generate_forecasts() stored procedure
+                        db.session.execute(text("CALL generate_forecasts()"))
 
                     processed_files.append(hse_file.filename)
                 except Exception as e:
+                    db.session.rollback()
+                    error_message = f"Error processing file {hse_file.filename}: {str(e)}"
+                    print(error_message)
+                    logging.error(error_message)
                     error_files.append((hse_file.filename, str(e)))
-                    print(f"Error processing file {hse_file.filename}: {str(e)}")
             else:
                 error_files.append((hse_file.filename, "Not an HSE file"))
 
@@ -1189,30 +1188,18 @@ def hse_uploader():
             message = f"{file_count} new sales orders have been added and processed successfully!"
             if error_files:
                 message += f" However, there were issues with {len(error_files)} file(s)."
-            return jsonify({
-                'status': 'success',
-                'message': message,
-                'processed_files': processed_files,
-                'error_files': error_files
-            })
+            return jsonify({'status': 'success', 'message': message, 'processed_files': processed_files, 'error_files': error_files})
         elif error_files:
-            return jsonify({
-                'status': 'error',
-                'message': f"There were issues processing {len(error_files)} file(s). Please try with a different file!.",
-                'error_files': error_files
-            })
+            return jsonify({'status': 'error', 'message': f"There were issues processing {len(error_files)} file(s). Please try with a different file!.", 'error_files': error_files})
         else:
-            return jsonify({
-                'status': 'info',
-                'message': "No new sales orders were added. The files may have already been processed."
-            })
+            return jsonify({'status': 'info', 'message': "No new sales orders were added. The files may have already been processed."})
 
     return render_template('hse_uploader.html')
 
 def read_hse_file(file_path):
     # Updated column widths based on user input
     col_specs = [
-        (0, 10),  # stock code
+        (0, 10),   # stock code
         (11, 13),  # issue
         (14, 22),  # required date
         (23, 31),  # required quantities
@@ -1222,11 +1209,13 @@ def read_hse_file(file_path):
         (76, 91),  # last delivery note
         (92, 100)  # last delivery date
     ]
+
     df = pd.read_fwf(file_path, colspecs=col_specs, header=None)
+    
+    # Assign column names
     df.columns = [
         'Stock Code', 'Issue', 'Required Date', 'Required Quantities',
-        'Order Reference', 'Location', 'Message', 'Last Delivery Note',
-        'Last Delivery Date'
+        'Order Reference', 'Location', 'Message', 'Last Delivery Note', 'Last Delivery Date'
     ]
 
     # Convert 'Required Date' to datetime format

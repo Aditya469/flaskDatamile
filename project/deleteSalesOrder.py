@@ -7,7 +7,7 @@ def delete_sales_orders_and_picklist():
         conn = mysql.connector.connect(
             host="localhost",
             user="root", 
-            # password="admin",
+            password="admin123",
             database="datamile"
         )
         
