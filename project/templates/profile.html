@@ -28,6 +28,16 @@
             {% if exclude_cancelled %}Include Cancelled List{% else %}Exclude Cancelled List{% endif %}
         </button>
     </div>
+    <div class="ml-2">
+        <button id="togglePriceMissingBtn" class="btn {% if show_price_missing %}btn-primary{% else %}btn-secondary{% endif %}">
+            {% if show_price_missing %}Show Full Table{% else %}Show Price Missing List{% endif %}
+        </button>
+        {% if show_price_missing %}
+        <div class="mt-3">
+            <a href="{{ url_for('main.download_prices_missing_csv') }}" class="btn btn-success">Download Prices Missing CSV</a>
+        </div>
+        {% endif %}
+    </div>
 </div>
 
 <div class="table-responsive">
@@ -103,11 +113,13 @@ $(document).ready(function() {
         var accountId = $('#accountFilter').val();
         var week = $('#weekFilter').val();
         var excludeCancelled = $('#excludeCancelledBtn').hasClass('btn-primary');
+        var showPriceMissing = $('#togglePriceMissingBtn').hasClass('btn-primary');
 
         var url = new URL(window.location);
         url.searchParams.set('account_id', accountId);
         url.searchParams.set('week', week);
         url.searchParams.set('exclude_cancelled', excludeCancelled);
+        url.searchParams.set('show_price_missing', showPriceMissing);
         window.location.href = url.toString();
     }
 
@@ -119,6 +131,16 @@ $(document).ready(function() {
             $(this).text('Include Cancelled List');
         } else {
             $(this).text('Exclude Cancelled List');
+        }
+        updateTable();
+    });
+
+    $('#togglePriceMissingBtn').on('click', function() {
+        $(this).toggleClass('btn-secondary btn-primary');
+        if ($(this).hasClass('btn-primary')) {
+            $(this).text('Show Full Table');
+        } else {
+            $(this).text('Show Price Missing List');
         }
         updateTable();
     });

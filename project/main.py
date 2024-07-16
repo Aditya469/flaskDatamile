@@ -21,9 +21,11 @@ from .models import SalesOrder, Picklist, StockPrice, CancelledList, WeeklyForec
 from .deleteSalesOrder import delete_sales_orders_and_picklist
 from . import db
 from datetime import datetime
-from sqlalchemy import text, func, case
+from sqlalchemy import text, func, case, and_
 from sqlalchemy.types import Integer
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+from contextlib import contextmanager
 from project import create_app
 from PyPDF2 import PdfMerger
 
@@ -487,6 +489,7 @@ def profile():
     selected_account_id = request.args.get('account_id', 'All')
     selected_week = request.args.get('week', 'All')
     exclude_cancelled = request.args.get('exclude_cancelled', 'false').lower() == 'true'
+    show_price_missing = request.args.get('show_price_missing', 'false').lower() == 'true'
 
     # Update unit prices from stock_price table
     update_unit_prices()
@@ -512,6 +515,8 @@ def profile():
         sales_query = sales_query.filter(SalesOrder.week == selected_week)
     if exclude_cancelled:
         sales_query = sales_query.filter(SalesOrder.required_quantity != 0)
+    if show_price_missing:
+        sales_query = sales_query.filter(and_(SalesOrder.unit_price == 0, SalesOrder.required_quantity != 0))
 
     sales_orders = sales_query.all()
 
@@ -522,13 +527,42 @@ def profile():
     weeks = [week[0] for week in weeks]
 
     return render_template('profile.html', 
-                           name=current_user,
-                           sales_orders=sales_orders,
+                           name=current_user, 
+                           sales_orders=sales_orders, 
                            account_ids=account_ids, 
-                           weeks=weeks,
-                           selected_account_id=selected_account_id,
-                           selected_week=selected_week,
-                           exclude_cancelled=exclude_cancelled)
+                           weeks=weeks, 
+                           selected_account_id=selected_account_id, 
+                           selected_week=selected_week, 
+                           exclude_cancelled=exclude_cancelled,
+                           show_price_missing=show_price_missing)
+
+@main.route('/download_prices_missing_csv')
+@login_required
+def download_prices_missing_csv():
+    # Query for sales orders with unit price 0 and required quantity not 0
+    sales_query = SalesOrder.query.filter(
+        and_(SalesOrder.unit_price == 0, SalesOrder.required_quantity != 0)
+    ).order_by(SalesOrder.stock_code).distinct(SalesOrder.stock_code)
+
+    # Prepare CSV data
+    csv_data = StringIO()
+    csv_writer = csv.writer(csv_data)
+
+    # Write header
+    csv_writer.writerow(['stock_code', 'unit_price'])
+
+    # Write data rows
+    for order in sales_query:
+        csv_writer.writerow([order.stock_code, order.unit_price])
+
+    # Prepare the response
+    csv_data.seek(0)
+    return send_file(
+        BytesIO(csv_data.getvalue().encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='RequiredPrices.csv'
+    )
 
 def update_unit_prices():
     # Subquery to get the latest unit price for each stock code
@@ -729,7 +763,7 @@ def download_duplicate_list():
     writer = csv.writer(output)
     
     # Write header
-    writer.writerow(['Stock Code', 'Unit Price', 'Last Updated'])
+    writer.writerow(['stock_code', 'unit_price'])
     
     # Write data
     for price in duplicates:
@@ -1081,6 +1115,19 @@ def clear_app_data():
         return jsonify({'status': 'success', 'message': 'App data cleared successfully'}), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Error clearing app data: {str(e)}'}), 500
+    
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = Session(db.engine)
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 @main.route('/hse_uploader', methods=['GET', 'POST'])
 @login_required
@@ -1130,10 +1177,9 @@ def hse_uploader():
                         logging.info(f"DataFrame shape: {df.shape}")
 
                         # Start a new transaction for each file
-                        with db.session.begin():
+                        with session_scope() as session:
                             for _, row in df.iterrows():
-                                # Check if the row already exists in the database
-                                existing_order = SalesOrder.query.filter_by(
+                                existing_order = session.query(SalesOrder).filter_by(
                                     account_id=account_id,
                                     stock_code=row['Stock Code'],
                                     issue=row['Issue'],
@@ -1142,7 +1188,6 @@ def hse_uploader():
                                 ).first()
 
                                 if not existing_order:
-                                    # Add the new row to the database
                                     sales_order = SalesOrder(
                                         account_id=account_id,
                                         stock_code=row['Stock Code'],
@@ -1156,41 +1201,32 @@ def hse_uploader():
                                         last_delivery_date=row['Last Delivery Date'],
                                         month=row['Month']
                                     )
-                                    db.session.add(sales_order)
+                                    session.add(sales_order)
                                     file_count += 1
 
-                            # Update the 'week' column using the custom SQL Stored Procedure
-                            db.session.execute(text("CALL update_week_column()"))
-
-                            # Call the create_picklist() stored procedure
-                            db.session.execute(text("CALL create_picklist()"))
-
-                            # Call the create_cancelled_list() stored procedure
-                            db.session.execute(text("CALL create_cancelled_list()"))
-
-                            # Update only SalesOrder table with new unit prices and sale prices
-                            stock_prices = StockPrice.query.all()
+                            # Update unit prices and sale prices
+                            stock_prices = session.query(StockPrice).all()
                             for stock_price in stock_prices:
-                                # Update SalesOrder table
-                                SalesOrder.query.filter_by(stock_code=stock_price.stock_code).update({
+                                session.query(SalesOrder).filter_by(stock_code=stock_price.stock_code).update({
                                     SalesOrder.unit_price: stock_price.unit_price,
                                     SalesOrder.sale_price: SalesOrder.required_quantity * stock_price.unit_price
                                 }, synchronize_session=False)
 
-                            # Call the generate_forecasts() stored procedure
-                            db.session.execute(text("CALL generate_forecasts()"))
+                            # Execute stored procedures
+                            session.execute(text("CALL update_week_column()"))
+                            session.execute(text("CALL create_picklist()"))
+                            session.execute(text("CALL create_cancelled_list()"))
+                            session.execute(text("CALL generate_forecasts()"))                         
 
                         processed_files.append(hse_file.filename)
                         file_count += 1
 
                     except Exception as e:
-                            db.session.rollback()
-                            error_message = f"Error processing file {hse_file.filename}: {str(e)}"
-                            logging.error(error_message)
-                            error_files.append((hse_file.filename, str(e)))
-
-                    else:
-                        error_files.append((hse_file.filename, "Not an HSE file"))
+                        error_message = f"Error processing file {hse_file.filename}: {str(e)}"
+                        logging.error(error_message)
+                        error_files.append((hse_file.filename, str(e)))
+                else:
+                    error_files.append((hse_file.filename, "Not an HSE file"))
 
             if file_count > 0:
                 message = f"{file_count} new sales orders have been added and processed successfully!"

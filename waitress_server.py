@@ -1,4 +1,4 @@
-#!C:\Users\Rama Kolluri\flaskDatamile\venv\Scripts\python.exe
+#!C:\Users\Rama\flaskDatamile\venv\Scripts\python.exe
 import win32serviceutil
 import win32service
 import win32event
