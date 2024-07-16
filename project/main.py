@@ -786,10 +786,10 @@ def get_weekly_forecast(page):
 
     weekly_total_row = {
         'Account': 'Total',
-        'Arrears': sum(forecast['Arrears'] for forecast in weekly_forecasts_dict),
-        **{week: sum(forecast[week] for forecast in weekly_forecasts_dict) for week in week_columns},
-        'Total': sum(forecast['Total'] for forecast in weekly_forecasts_dict),
-        'Grand Total': sum(forecast['Grand Total'] for forecast in weekly_forecasts_dict)
+        'Arrears': sum(forecast['Arrears'] for forecast in weekly_forecasts_dict if forecast['Arrears'] is not None),
+        **{week: sum(forecast[week] for forecast in weekly_forecasts_dict if forecast[week] is not None) for week in week_columns},
+        'Total': sum(forecast['Total'] for forecast in weekly_forecasts_dict if forecast['Total'] is not None),
+        'Grand Total': sum(forecast['Grand Total'] for forecast in weekly_forecasts_dict if forecast['Grand Total'] is not None)
     }
     weekly_forecasts_dict.append(weekly_total_row)
 
@@ -841,10 +841,10 @@ def get_monthly_forecast(page):
 
     monthly_total_row = {
         'Account': 'Total',
-        'Arrears': sum(forecast['Arrears'] for forecast in monthly_forecasts_dict),
-        **{month: sum(forecast.get(month, 0) for forecast in monthly_forecasts_dict) for month in month_columns},
-        'Total': sum(forecast['Total'] for forecast in monthly_forecasts_dict),
-        'Grand Total': sum(forecast['Grand Total'] for forecast in monthly_forecasts_dict)
+        'Arrears': sum(forecast['Arrears'] for forecast in monthly_forecasts_dict if forecast['Arrears'] is not None),
+        **{month: sum(forecast.get(month, 0) for forecast in monthly_forecasts_dict if forecast.get(month) is not None) for month in month_columns},
+        'Total': sum(forecast['Total'] for forecast in monthly_forecasts_dict if forecast['Total'] is not None),
+        'Grand Total': sum(forecast['Grand Total'] for forecast in monthly_forecasts_dict if forecast['Grand Total'] is not None)
     }
     monthly_forecasts_dict.append(monthly_total_row)
 
@@ -1217,7 +1217,7 @@ def read_hse_file(file_path):
         (23, 31),  # required quantities
         (32, 42),  # order reference
         (43, 48),  # location
-        (50, 74),  # message (adjusted to cover full width)
+        (55, 75),  # message (adjusted to cover full width)
         (76, 91),  # last delivery note
         (92, 100)  # last delivery date
     ]
