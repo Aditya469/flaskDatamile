@@ -1,2 +1,5 @@
 venv/
 project/__pycache__/
+project/cancelled_list/
+project/picklist/
+project/hse_storage/
