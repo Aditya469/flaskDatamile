@@ -2,7 +2,7 @@
 #! Last Updated on: 17/07/2024
 #! Developer: Rama Kolluri - JavaScript Used: Bootstrap 4.
 
-#! A[The App Tutorial from clicking here.](https://github.com/Aditya469/flaskDatamile/blob/main/project/required_files/Datamile_Tutorial_PDF_v1.0.pdf)
+#! [The App Tutorial from clicking here.](https://github.com/Aditya469/flaskDatamile/blob/main/project/required_files/Datamile_Tutorial_PDF_v1.0.pdf)
 
 0. Git clone the repository with the following command
 
