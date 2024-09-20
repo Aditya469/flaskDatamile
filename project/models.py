@@ -48,10 +48,14 @@ class Picklist(db.Model):
     class Meta:
         ordering = ['account_id', 'week', 'required_date', 'required_day']
 
+    __table_args__ = (
+        db.UniqueConstraint('account_id', 'stock_code', 'issue', 'required_date', 'required_quantity', name='unique_picklist'),
+    )
+
 class CancelledList(db.Model):
     account_id = db.Column(db.String(10), primary_key=True)
     stock_code = db.Column(db.String(20), primary_key=True)
-    issue = db.Column(db.String(10))
+    issue = db.Column(db.String(10), nullable=True)
     required_date = db.Column(db.Date, primary_key=True)
     required_day = db.Column(db.String(10))
     required_quantity = db.Column(db.Integer, primary_key=True)
@@ -63,14 +67,19 @@ class CancelledList(db.Model):
     class Meta:
         ordering = ['account_id', 'week', 'required_date', 'required_day']
 
+    __table_args__ = (
+        db.UniqueConstraint('account_id', 'stock_code', 'issue', 'required_date', 'required_quantity', name='unique_cancelled_list'),
+    )
+
 class StockPrice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.String(10), nullable=False)
     stock_code = db.Column(db.String(20), nullable=False)
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     last_updated = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
     def __repr__(self):
-        return f"<StockPrice {self.stock_code}: £{self.unit_price}>"
+        return f"<StockPrice(account_id='{self.account_id}', stock_code='{self.stock_code}', unit_price={self.unit_price})>"
     
 class WeeklyForecasts(db.Model):
     __tablename__ = 'weekly_forecasts'

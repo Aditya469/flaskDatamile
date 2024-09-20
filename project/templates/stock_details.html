@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Stock Details</h1>
+    <h1 class="h3 mb-0 text-gray-800">Stock Prices</h1>
 </div>
 <hr>
 <div class="card shadow mb-4">
@@ -11,9 +11,19 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered" id="stockDetailsTable" width="100%" cellspacing="0">
+
+            <div>
+                <button id="editPriceDetails" class="btn btn-primary" style="margin-right: 50px;">Edit Price Details</button>
+                <button id="saveChanges" class="btn btn-success" style="display: none;">Save Changes</button>
+                <button id="cancelChanges" class="btn btn-secondary" style="display: none;">Cancel</button>
+                <button type="button" id="removeSelected" class="btn btn-danger">Remove Selected</button>
+            </div>
+            <div style="margin-bottom: 10px;"></div>
+            <table id="stockPriceTable" class="table table-striped" width="100%" cellspacing="0">
                 <thead>
                     <tr>
+                        <th>Select</th>
+                        <th>Account ID</th>
                         <th>Stock Code</th>
                         <th>Unit Price</th>
                         <th>Last Updated</th>
@@ -21,15 +31,20 @@
                 </thead>
                 <tbody>
                     {% for stock in stock_prices %}
-                    <tr>
-                        <td>{{ stock.stock_code }}</td>
-                        <td>£{{ stock.unit_price }}</td>
+                    <tr data-id="{{ stock.id }}">
+                        <td><input type="checkbox" class="select-row"></td>
+                        <td class="account-id" data-value="{{ stock.account_id }}">{{ stock.account_id }}</td>
+                        <td class="stock-code" data-value="{{ stock.stock_code }}">{{ stock.stock_code }}</td>
+                        <td class="unit-price" data-value="{{ stock.unit_price }}">{{ stock.unit_price }}</td>
                         <td>{{ stock.last_updated.strftime('%Y-%m-%d %H:%M:%S %Z') }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        <br>
+        <a href="{{ url_for('main.generate_stock_price_workbook') }}" class="btn btn-primary" style="margin-right: 50px;">Generate Stock Price Workbook</a>
+        <a href="{{ url_for('main.generate_stock_price_csv') }}" class="btn btn-secondary">Generate Stock Price CSV</a>
     </div>
 </div>
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -58,16 +73,25 @@
                 <h6 class="m-0 font-weight-bold text-primary">Update Single Stock Price</h6>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('main.stock_details') }}">
-                    <input type="text" name="stock_code" placeholder="Stock Code" required>
-                    <input type="number" step="0.01" name="unit_price" placeholder="Unit Price" required>
-                    <button type="submit">Update Price</button>
+                <form method="POST" action="{{ url_for('main.update_selected_prices') }}">
+                    <div>
+                        <input type="text" name="account_id" placeholder="Account ID" required>
+                        <input type="text" name="stock_code" placeholder="Stock Code" required>
+                        <input type="number" step="0.01" name="unit_price" placeholder="Unit Price" required>
+                    </div>
+                    <br>
+                    <div>
+                        <button type="submit" class="btn btn-success">Add/Update Price</button>
+                    </div>
+                    <div style="margin-bottom: 20px;"></div>
+                    <p>Through this you can add a stock item with price, or update price of a already added stock item.</p>                   
+                    
                 </form>
                 <!-- Duplicate Stock Codes -->
                 <br>
                 <hr>
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Duplicate Stock Codes</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Duplicate Stock Prices</h6>
                 </div>
                 <div class="card-body">
                     {% if grouped_stock_prices %}
@@ -76,6 +100,7 @@
                             <thead>
                                 <tr>
                                     <th>Select</th>
+                                    <th>Account ID</th>
                                     <th>Stock Code</th>
                                     <th>Unit Price</th>
                                     <th>Last Updated</th>
@@ -86,6 +111,7 @@
                                     {% for price in group %}
                                         <tr>
                                             <td><input type="checkbox" name="selected_ids" value="{{ price.id }}"></td>
+                                            <td>{{ price.account_id }}</td>
                                             <td>{{ price.stock_code }}</td>
                                             <td>{{ price.unit_price }}</td>
                                             <td>{{ price.last_updated }}</td>
@@ -117,16 +143,14 @@
                     <div class="form-group">
                         <label for="file">Upload CSV File</label>
                         <input type="file" class="form-control-file" id="file" name="file" accept=".csv" required>
+                        <div style="margin-bottom: 20px;"></div>
+                        <button type="submit" class="btn btn-primary" style="margin-right: 50px;" >Upload and Update Prices</button>
+                        <a href="{{ url_for('main.download_csv_format') }}" class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Download CSV Format
+                        </a>
                     </div>
-                    <button type="submit" class="btn btn-primary">Upload and Update Prices</button>
                 </form>
                 <hr>
-                <a href="{{ url_for('main.download_csv_format') }}" class="btn btn-secondary">
-                    <i class="fas fa-download"></i> Download CSV Format
-                </a>
-                <br>
-                <hr>
-                <br>
                 <form action="{{ url_for('main.clear_stock_prices') }}" method="post">
                     <p>This following button removes all the stocks and their prices from the database!</p>
                     <button type="submit" class="btn btn-danger">Clear All Stock Prices</button>
@@ -136,10 +160,32 @@
     </div>
 </div>
 
+<style>
+    .alert-info {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+        padding: 20px;
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+        color: #155724;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .dataTables_filter input:disabled,
+    .dataTables_length select:disabled {
+        background-color: #e9ecef;
+        opacity: 0.7;
+    }
+</style>
+
 <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+
 <script>
     $(document).ready(function() {
-        $('#stockDetailsTable').DataTable({
+        var table = $('#stockPriceTable').DataTable({
             "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
             "pageLength": 10,
             "dom": '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip',
@@ -147,8 +193,148 @@
                 "lengthMenu": "Show _MENU_ entries",
                 "search": "Search:",
                 "info": "Showing _START_ to _END_ of _TOTAL_ entries"
+            },
+            "columnDefs": [
+                { "orderable": false, "targets": 0 }
+            ],
+            "order": [[1, 'asc']]
+        });
+
+        function convertRowsToInputs() {
+            table.rows({ page: 'current' }).every(function() {
+                var row = this.node();
+                var unitPriceCell = $(row).find('td:eq(3)');
+                var unitPrice = unitPriceCell.text();
+                unitPriceCell.html('<input type="number" step="0.01" class="form-control" value="' + unitPrice + '">');
+            });
+        }
+
+        function convertInputsToRows() {
+            table.rows({ page: 'current' }).every(function() {
+                var row = this.node();
+                var unitPriceInput = $(row).find('td:eq(3) input');
+                var unitPrice = unitPriceInput.val();
+                $(row).find('td:eq(3)').html(unitPrice);
+            });
+        }
+
+        $('#editPriceDetails').on('click', function() {
+            convertRowsToInputs();
+            $('.dataTables_filter input').prop('disabled', true);
+            $('.dataTables_length select').prop('disabled', true);
+        });
+
+        $('#saveChanges').on('click', function() {
+            var updatedPrices = [];
+            table.rows({ page: 'current' }).every(function() {
+                var row = this.node();
+                var stockCode = $(row).find('td:eq(2)').text();
+                var unitPrice = $(row).find('td:eq(3) input').val();
+                updatedPrices.push({ stock_code: stockCode, unit_price: unitPrice });
+            });
+        });
+
+        // Edit Price Details button click event
+        $('#editPriceDetails').click(function() {
+            $(this).hide();
+            $('#saveChanges').show();
+            $('#cancelChanges').show();
+
+            // Convert cells to input fields
+            $('#stockPriceTable tbody tr').each(function() {
+                var row = $(this);
+                var accountId = row.find('.account-id').data('value');
+                var stockCode = row.find('.stock-code').data('value');
+                var unitPrice = row.find('.unit-price').data('value');
+
+                row.find('.account-id').html('<input type="text" class="form-control" value="' + accountId + '">');
+                row.find('.stock-code').html('<input type="text" class="form-control" value="' + stockCode + '">');
+                row.find('.unit-price').html('<input type="number" step="0.01" class="form-control" value="' + unitPrice + '">');
+            });
+        });
+
+        // Cancel Changes button click event
+        $('#cancelChanges').click(function() {
+            location.reload();
+        });
+
+        // Save Changes button click event
+        $('#saveChanges').click(function() {
+            var updatedStocks = [];
+            $('#stockPriceTable tbody tr').each(function() {
+                var row = $(this);
+                var id = row.data('id');
+                var accountId = row.find('.account-id input').val();
+                var stockCode = row.find('.stock-code input').val();
+                var unitPrice = row.find('.unit-price input').val();
+
+                updatedStocks.push({
+                    id: id,
+                    account_id: accountId,
+                    stock_code: stockCode,
+                    unit_price: unitPrice
+                });
+            });
+
+            // Show "Working in progress..." message
+            var progressMessage = $('<div class="alert alert-info">Working on it please wait....</div>');
+            $('body').append(progressMessage);
+
+            $.ajax({
+                url: '/update_stock_prices',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({stocks: updatedStocks}),
+                success: function(response) {
+                    // Remove the progress message
+                    progressMessage.remove();
+
+                    if (response.status === 'success') {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Error updating stock prices: ' + response.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while updating stock prices.');
+                }
+            });
+        });
+
+        // Remove Selected button click event
+        $('#removeSelected').click(function() {
+            var selectedIds = [];
+            $('.select-row:checked').each(function() {
+                selectedIds.push($(this).closest('tr').data('id'));
+            });
+
+            if (selectedIds.length === 0) {
+                alert('Please select at least one stock price to remove.');
+                return;
+            }
+
+            if (confirm('Are you sure you want to remove the selected stock prices?')) {
+                $.ajax({
+                    url: '/remove_stock_prices',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ids: selectedIds}),
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            alert('Selected stock prices removed successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error removing stock prices: ' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred while removing stock prices.');
+                    }
+                });
             }
         });
+
         function displayMessage(message, status) {
             var messageContainer = $('#message-container');
             messageContainer.empty();
@@ -174,6 +360,13 @@
                 cache: false,
                 contentType: false,
                 processData: false
+            });
+        });
+
+        // Ensure only numbers can be entered in the unit price field
+        document.querySelectorAll('.unit-price').forEach(function(cell) {
+            cell.addEventListener('input', function(e) {
+                this.textContent = this.textContent.replace(/[^0-9.]/g, '');
             });
         });
 

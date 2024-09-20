@@ -5,47 +5,74 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 
 
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Welcome to DataMile Application</h1>
-</div>
-<hr>
-<div class="mb-4 d-flex">
-    <div class="mr-2">
-        <button id="picklistBtn" class="btn btn-primary" onclick="showTable('picklist')">Picklist</button>
-        <button id="cancelledListBtn" class="btn btn-secondary" onclick="showTable('cancelled_list')">Cancelled List</button>
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h1 class="h3 mb-4 text-gray-800">Assembly Scedules</h1>
+            <div class="mb-4">
+                <button id="picklistBtn" class="btn btn-primary mr-2" onclick="showTable('picklist')">Picklist</button>
+                <button id="cancelledListBtn" class="btn btn-secondary" onclick="showTable('cancelled_list')">Cancelled List</button>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="accountFilter">Filter by Account ID:</label>
+                    <select id="accountFilter" class="form-control" size="5">
+                        <option value="" selected>All</option>
+                        {% for account_id in account_ids|sort %}
+                        <option value="{{ account_id }}">{{ account_id }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="weekFilter">Filter by Week:</label>
+                    <select id="weekFilter" class="form-control" size="5">
+                        <option value="" selected>All</option>
+                        {% for week in weeks|sort %}
+                        <option value="{{ week }}">{{ week }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="dateFilter">Filter by Required Date:</label>
+                    <select id="dateFilter" class="form-control" size="5">
+                        <option value="" selected>All</option>
+                        {% for date in required_dates %}
+                        <option value="{{ date }}">{{ date }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Extend Week Range</h5>
+                    <form id="filterForm" method="get" action="{{ url_for('main.index') }}">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="week5" name="extended_weeks" value="Week - 5" {% if 'Week - 5' in extended_weeks %}checked{% endif %}>
+                            <label class="form-check-label" for="week5">Week - 5</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="week6" name="extended_weeks" value="Week - 6" {% if 'Week - 6' in extended_weeks %}checked{% endif %}>
+                            <label class="form-check-label" for="week6">Week - 6</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="week7" name="extended_weeks" value="Week - 7" {% if 'Week - 7' in extended_weeks %}checked{% endif %}>
+                            <label class="form-check-label" for="week7">Week - 7</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="week8" name="extended_weeks" value="Week - 8" {% if 'Week - 8' in extended_weeks %}checked{% endif %}>
+                            <label class="form-check-label" for="week8">Week - 8</label>
+                        </div>
+                        <input type="hidden" name="show_further_weeks" value="false">
+                        <button type="button" id="showFurtherWeeks" class="btn btn-primary btn-sm mr-2">Show Further Weeks</button>
+                        <button type="button" id="excludeExtendedWeeks" class="btn btn-secondary btn-sm">Exclude Extended Weeks</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
-
-<div class="mb-4 d-flex">
-    <div class="mr-2">
-        <label for="accountFilter">Filter by Account ID:</label>
-        <select id="accountFilter" class="form-control" style="width: 200px;" size="5">
-            <option value="" selected>All</option>
-            {% for account_id in account_ids|sort %}
-            <option value="{{ account_id }}">{{ account_id }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="mr-2">
-        <label for="weekFilter">Filter by Week:</label>
-        <select id="weekFilter" class="form-control" style="width: 200px;" size="5">
-            <option value="" selected>All</option>
-            {% for week in weeks|sort %}
-            <option value="{{ week }}">{{ week }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div>
-        <label for="dateFilter">Filter by Required Date:</label>
-        <select id="dateFilter" class="form-control" style="width: 200px;" size="5">
-            <option value="" selected>All</option>
-            {% for date in required_dates %}
-            <option value="{{ date }}">{{ date }}</option>
-            {% endfor %}
-        </select>
-    </div>
-</div>
-
+    <div style="margin-bottom: 10px;"></div>
 
 <div id="picklistTableContainer">
     <div class="card shadow mb-4">
@@ -88,7 +115,7 @@
                     </tbody>
                 </table>
                 <div>
-                    <a href="{{ url_for('main.generate_picklist_pdf') }}" class="btn btn-primary mt-3">Get Picklist PDF</a>
+                    <a href="{{ url_for('main.generate_picklist_pdf', show_further_weeks=show_further_weeks, extended_weeks=extended_weeks) }}" class="btn btn-primary mt-3">Generate Picklist PDF</a>
                 </div>
             </div>
         </div>
@@ -136,7 +163,7 @@
                     </tbody>
                 </table>
                 <div>
-                    <a href="{{ url_for('main.generate_cancelled_list_pdf') }}" class="btn btn-primary">Get Cancelled List PDF</a>
+                    <a href="{{ url_for('main.generate_cancelled_list_pdf', show_further_weeks=show_further_weeks, extended_weeks=extended_weeks) }}" class="btn btn-primary mt-3">Generate Cancelled List PDF</a>
                 </div>
             </div>
         </div>
@@ -197,6 +224,170 @@
         $.fn.dataTable.ext.search.pop();
     }
 
+    document.addEventListener('DOMContentLoaded', function() {
+        var showFurtherWeeksBtn = document.getElementById('showFurtherWeeks');
+        var excludeExtendedWeeksBtn = document.getElementById('excludeExtendedWeeks');
+        var generatePicklistPdfBtn = document.getElementById('generatePicklistPdf');
+        var generateCancelledListPdfBtn = document.getElementById('generateCancelledListPdf');
+        var extendWeekRangeCheckboxes = document.querySelectorAll('#extendWeekRange input[type="checkbox"]');
+
+        function getExtendedWeeks() {
+            var extendedWeeks = [];
+            var checkboxes = document.querySelectorAll('input[name="extended_weeks"]:checked');
+            checkboxes.forEach(function(checkbox) {
+                extendedWeeks.push(checkbox.value);
+            });
+            return extendedWeeks;
+        }
+
+        function updateUrl(baseUrl, showFurtherWeeks) {
+            var url = new URL(baseUrl, window.location.origin);
+            var extendedWeeks = getExtendedWeeks();
+            url.searchParams.delete('extended_weeks');
+            extendedWeeks.forEach(function(week) {
+                url.searchParams.append('extended_weeks', week);
+            });
+            url.searchParams.set('show_further_weeks', showFurtherWeeks);
+            url.searchParams.set('extended_weeks_value', updateExtendedWeeksValue());
+            return url.toString();
+        }
+
+        function saveCheckedCheckboxes() {
+            var checkedWeeks = getExtendedWeeks();
+            localStorage.setItem('checkedWeeks', JSON.stringify(checkedWeeks));
+        }
+
+        function loadCheckedCheckboxes() {
+            var checkedWeeks = JSON.parse(localStorage.getItem('checkedWeeks')) || [];
+            checkedWeeks.forEach(function(week) {
+                var checkbox = document.querySelector(`input[name="extended_weeks"][value="${week}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+
+        function updateExtendedWeeksValue() {
+            var value = '';
+            var checkboxes = document.querySelectorAll('#extendWeekRange input[type="checkbox"]');
+            checkboxes.forEach(function(checkbox) {
+                if (checkbox.checked) {
+                    value += checkbox.value.split(' - ')[1];
+                }
+            });
+            return value === '' ? '0' : value;
+        }
+
+        // Add this event listener to each checkbox
+        var checkboxes = document.querySelectorAll('#extendWeekRange input[type="checkbox"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                fetch('/update_extended_weeks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({value: updateExtendedWeeksValue()}),
+                });
+            });
+        });
+
+        function clearCheckedCheckboxes() {
+            localStorage.removeItem('checkedWeeks');
+        }
+
+        function toggleShowFurtherWeeksButton(enabled) {
+            if (showFurtherWeeksBtn) {
+                showFurtherWeeksBtn.classList.toggle('active', enabled);
+            }
+        }
+
+        if (showFurtherWeeksBtn) {
+            showFurtherWeeksBtn.addEventListener('click', function() {
+                var extendedWeeks = getExtendedWeeks();
+                if (extendedWeeks.length === 0) {
+                    alert('Please select any weeks for extension first!');
+                } else {
+                    saveCheckedCheckboxes();
+                    fetch('/update_extended_weeks', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({value: updateExtendedWeeksValue()}),
+                    }).then(() => {
+                        window.location.href = updateUrl(window.location.href, 'true');
+                    });
+                }
+            });
+        }
+
+        if (excludeExtendedWeeksBtn) {
+            excludeExtendedWeeksBtn.addEventListener('click', function(event) {
+                event.preventDefault();
+                
+                extendWeekRangeCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = false;
+                });
+
+                clearCheckedCheckboxes();
+
+                fetch('/update_extended_weeks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({value: '0'}),
+                }).then(() => {
+                    var url = new URL(window.location.href);
+                    url.searchParams.delete('extended_weeks');
+                    url.searchParams.set('show_further_weeks', 'false');
+                    window.location.href = url.toString();
+                });
+            });
+        }
+
+        if (generatePicklistPdfBtn) {
+            generatePicklistPdfBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var url = new URL(this.href, window.location.origin);
+                var extendedWeeks = getExtendedWeeks();
+                extendedWeeks.forEach(function(week) {
+                    url.searchParams.append('extended_weeks', week);
+                });
+                url.searchParams.set('show_further_weeks', showFurtherWeeksBtn.classList.contains('active'));
+                window.location.href = url.toString();
+            });
+        }
+
+        if (generateCancelledListPdfBtn) {
+            generateCancelledListPdfBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var url = new URL(this.href, window.location.origin);
+                var extendedWeeks = getExtendedWeeks();
+                extendedWeeks.forEach(function(week) {
+                    url.searchParams.append('extended_weeks', week);
+                });
+                url.searchParams.set('show_further_weeks', showFurtherWeeksBtn.classList.contains('active'));
+                window.location.href = url.toString();
+            });
+        }
+
+        // Load checked checkboxes when the page loads
+        loadCheckedCheckboxes();
+
+        // Add event listeners to checkboxes to save state when checked/unchecked
+        extendWeekRangeCheckboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', saveCheckedCheckboxes);
+        });
+
+        // Check if any checkboxes are checked on page load and update the showFurtherWeeksBtn accordingly
+        if (getExtendedWeeks().length > 0) {
+            toggleShowFurtherWeeksButton(true);
+        }
+    });
+
+
     $(document).ready(function() {
         picklistTable = $('#picklistTable').DataTable({
             "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
@@ -228,20 +419,6 @@
         // Initial table display
         showTable('picklist');
     });
-    document.getElementById('generatePdfBtn').addEventListener('click', function() {
-        fetch('{{ url_for("main.generate_picklist_pdf") }}')
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    alert(data.message);
-                } else {
-                    alert('Error generating PDFs');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while generating PDFs');
-            });
-    });
+
 </script>
 {% endblock %}

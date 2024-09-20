@@ -26,7 +26,7 @@ CREATE TABLE cancelled_list (
     location VARCHAR(20),
     message VARCHAR(20),
     week VARCHAR(10),
-    PRIMARY KEY (account_id, stock_code, issue, required_date, required_quantity)
+    UNIQUE KEY unique_cancelled_list (account_id, stock_code, issue, required_date, required_quantity)
 );
 
 -- create picklist table
@@ -43,7 +43,7 @@ CREATE TABLE picklist (
     location VARCHAR(20),
     message VARCHAR(20),
     week VARCHAR(10),
-    PRIMARY KEY (account_id, stock_code, issue, required_date, required_quantity)
+    UNIQUE KEY unique_picklist (account_id, stock_code, issue, required_date, required_quantity)
 );
 
 -- Create stock_price table
@@ -51,6 +51,7 @@ DROP TABLE IF EXISTS stock_price;
 
 CREATE TABLE stock_price (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    account_id VARCHAR(20) NOT NULL,
     stock_code VARCHAR(20) NOT NULL,
     unit_price DECIMAL(10, 2) NOT NULL,
     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -121,7 +122,7 @@ BEGIN
         DAYNAME(required_date) AS required_day,
         required_quantity, order_reference, location, message, week
     FROM sales_order
-    WHERE week IN ('Arrears', 'Week - 1', 'Week - 2', 'Week - 3', 'Week - 4')
+    WHERE week IN ('Arrears', 'Week - 1', 'Week - 2', 'Week - 3', 'Week - 4', 'Week - 5', 'Week - 6', 'Week - 7', 'Week - 8')
     AND required_quantity = 0;
 END //
 
@@ -145,7 +146,7 @@ BEGIN
         DAYNAME(required_date) AS required_day,
         required_quantity, order_reference, location, message, week
     FROM sales_order
-    WHERE week IN ('Arrears', 'Week - 1', 'Week - 2', 'Week - 3', 'Week - 4')
+    WHERE week IN ('Arrears', 'Week - 1', 'Week - 2', 'Week - 3', 'Week - 4', 'Week - 5', 'Week - 6', 'Week - 7', 'Week - 8')
     AND required_quantity > 0;
 END //
 

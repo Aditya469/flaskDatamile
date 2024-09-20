@@ -73,8 +73,8 @@
             {% if current_user.is_authenticated %}
             <li class="nav-item {% if request.endpoint == 'main.stock_details' %}active{% endif %}">
                 <a class="nav-link" href="{{ url_for('main.stock_details') }}">
-                    <i class="fas fa-fw fa-bars"></i>
-                    <span>Stock Details</span>
+                    <i class="fas fa-fw fa-coins"></i>
+                    <span>Stock Prices</span>
                 </a>
             </li>
             {% endif %}
@@ -82,7 +82,7 @@
             {% if current_user.is_authenticated %}
             <li class="nav-item {% if request.endpoint == 'main.sales_forecasts' %}active{% endif %}">
                 <a class="nav-link" href="{{ url_for('main.sales_forecasts') }}">
-                    <i class="fas fa-fw fa-chart-line"></i>
+                    <i class="fas fa-fw fa-calendar"></i>
                     <span>Sales Forecasts</span>
                 </a>
             </li>
