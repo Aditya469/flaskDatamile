@@ -11,6 +11,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Kee
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from openpyxl import Workbook
+from openpyxl.worksheet.table import Table as workbookTable
 from openpyxl.styles import Font
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.utils import get_column_letter
@@ -712,7 +713,7 @@ def generate_sales_workbook():
 
         # Apply the 'Blue Table Style 9' to the table
         table_range = f"A1:{get_column_letter(len(headers))}{len(sorted_orders)+1}"
-        table = Table(displayName=f"Table_{account_id}", ref=table_range)
+        table = workbookTable(displayName=f"Table_{account_id}", ref=table_range)
         style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False, showRowStripes=True, showColumnStripes=False)
         table.tableStyleInfo = style
         sheet.add_table(table) 
@@ -1069,7 +1070,7 @@ def generate_stock_price_workbook():
 
     # Apply table formatting
     table_range = f"A1:D{len(stock_prices)+1}"
-    table = Table(displayName="StockPricesTable", ref=table_range)
+    table = workbookTable(displayName="StockPricesTable", ref=table_range)
     style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False, showRowStripes=True, showColumnStripes=False)
     table.tableStyleInfo = style
     sheet.add_table(table)
@@ -1499,7 +1500,7 @@ def generate_sales_forecasts_workbook():
 
     # Apply the 'Blue Table Style 9' to the "Weekly Forecasts" table
     weekly_table_range = f"A1:{get_column_letter(len(weekly_headers))}{len(weekly_forecasts)+2}"
-    weekly_table = Table(displayName="WeeklyForecastsTable", ref=weekly_table_range)
+    weekly_table = workbookTable(displayName="WeeklyForecastsTable", ref=weekly_table_range)
     style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False, showRowStripes=True, showColumnStripes=False)
     weekly_table.tableStyleInfo = style
     weekly_sheet.add_table(weekly_table)
@@ -1554,7 +1555,7 @@ def generate_sales_forecasts_workbook():
 
     # Apply the 'Blue Table Style 9' to the "Monthly Forecasts" table
     monthly_table_range = f"A1:{get_column_letter(len(monthly_headers))}{len(monthly_forecasts)+2}"
-    monthly_table = Table(displayName="MonthlyForecastsTable", ref=monthly_table_range)
+    monthly_table = workbookTable(displayName="MonthlyForecastsTable", ref=monthly_table_range)
     style = TableStyleInfo(name="TableStyleMedium9", showFirstColumn=False, showLastColumn=False, showRowStripes=True, showColumnStripes=False)
     monthly_table.tableStyleInfo = style
     monthly_sheet.add_table(monthly_table)
