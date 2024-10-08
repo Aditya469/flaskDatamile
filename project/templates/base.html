@@ -48,11 +48,17 @@
     <!-- Page Wrapper -->
     <div id="wrapper">
         <!-- Sidebar -->
+         <!-- Divider -->
         <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
             <!-- Sidebar - Brand -->
-            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ url_for('main.index') }}">
-                <div class="sidebar-brand-text mx-3">Data Mile</div>
-            </a>
+            <!-- <div class="text-center data-toggle d-md-inline"> -->
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='images/DataMile_logo.jpg') }}" alt="DataMile Logo" class="logo">
+            
+                <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ url_for('main.index') }}">
+                    <div class="sidebar-brand-text mx-3">Data Mile</div>
+                </a>
+            </div>
             <!-- Divider -->
             <hr class="sidebar-divider my-0">
             <!-- Nav Item - Picklist (Landing Page) -->
@@ -125,10 +131,6 @@
                     </li>
                 </ul>
                 <button class="rounded-circle border-0" id="sidebarToggle"></button>
-            </div>
-            <!-- Divider -->
-            <div class="logo-container">
-                <img src="{{ url_for('static', filename='images/DataMile_logo.jpg') }}" alt="DataMile Logo" class="logo">
             </div>
         </ul>
         <!-- End of Sidebar -->
