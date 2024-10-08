@@ -5,6 +5,19 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>{% block title %}{% endblock %}Data Mile</title>
+
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/DataMile_logo.jpg') }}">
+    <style>
+        .logo-container {
+            text-align: center;
+            padding: 10px 0;
+        }
+        .logo {
+            max-width: 200px;
+            height: auto;
+        }
+    </style>
+
     <!-- In the <head> section -->
     <link href="{{ url_for('static', filename='css/dataTables.bootstrap.min.css') }}" rel="stylesheet">
     <!-- jQuery -->
@@ -108,10 +121,14 @@
                         </span>
                     </li>
                     <li class="nav-item">
-                        <span class="navbar-text mr-3" style="color: white;">Version: V.1.0</span>
+                        <span class="navbar-text mr-3" style="color: white;">Version: V.1.3</span>
                     </li>
                 </ul>
                 <button class="rounded-circle border-0" id="sidebarToggle"></button>
+            </div>
+            <!-- Divider -->
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='images/DataMile_logo.jpg') }}" alt="DataMile Logo" class="logo">
             </div>
         </ul>
         <!-- End of Sidebar -->
